@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 50" width="160" height="50">
+  <defs>
+    <!-- تدرج رمادي أنيق -->
+    <linearGradient id="grayGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a4a4a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- اسم XCV فقط -->
+  <text x="0" y="40" font-family="'Times New Roman', Georgia, serif" font-size="38" font-weight="700" fill="url(#grayGrad)" letter-spacing="5">
+    XCV
+  </text>
+</svg>

@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    @apply bg-gray-50 text-gray-900 transition-colors duration-300;
+  }
+
+  body.dark {
+    @apply bg-black text-gray-100;
+  }
+
+  /* ============================================
+     SCROLLBAR
+     ============================================ */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-gray-800;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-gray-600;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+
+  /* ============================================
+     SELECTION
+     ============================================ */
+  ::selection {
+    @apply bg-blue-500 text-white;
+  }
+
+  /* ============================================
+     FOCUS
+     ============================================ */
+  :focus-visible {
+    @apply outline outline-2 outline-blue-500 outline-offset-2;
+  }
+}
+
+/* ============================================
+   CUSTOM COMPONENTS (Tailwind doesn't cover)
+   ============================================ */
+@layer components {
+  /* Card */
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden mb-4 transition-all duration-300;
+  }
+
+  .dark .card {
+    @apply border border-gray-700;
+  }
+
+  .card-header {
+    @apply px-5 py-4 font-semibold text-base border-b border-gray-200 dark:border-gray-700 flex items-center justify-between;
+  }
+
+  .card-content {
+    @apply p-5;
+  }
+
+  /* Profile Avatar */
+  .profile-avatar {
+    @apply w-24 h-24 rounded-full object-cover border-4 border-white shadow-md;
+  }
+
+  .dark .profile-avatar {
+    @apply border-gray-800;
+  }
+
+  /* Stats Row */
+  .stats-row {
+    @apply flex justify-around py-3 my-3 border-t border-b border-gray-200 dark:border-gray-700;
+  }
+
+  .stat-item {
+    @apply text-center cursor-pointer transition-all duration-200 hover:-translate-y-0.5;
+  }
+
+  .stat-number {
+    @apply text-lg font-bold;
+  }
+
+  .stat-label {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+  }
+
+  /* Skills */
+  .skills-container {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .skill-chip {
+    @apply inline-flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 hover:bg-gray-200 dark:hover:bg-gray-600;
+  }
+
+  /* Timeline */
+  .timeline-item {
+    @apply pb-4 mb-4 border-b border-gray-200 dark:border-gray-700 last:border-0 last:mb-0 last:pb-0;
+  }
+
+  /* Projects */
+  .project-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .project-card {
+    @apply bg-white dark:bg-gray-800 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .dark .project-card {
+    @apply border border-gray-700;
+  }
+
+  .project-image {
+    @apply w-full h-40 object-cover;
+  }
+
+  /* Contribution Graph */
+  .contribution-graph-container {
+    @apply bg-white dark:bg-gray-800 rounded-xl p-4 overflow-x-auto transition-all duration-300;
+  }
+
+  .contribution-cell {
+    @apply w-3 h-3 rounded-sm cursor-pointer transition-all duration-200 hover:scale-110 hover:ring-1 hover:ring-blue-500;
+  }
+
+  /* Posts */
+  .post-card {
+    @apply bg-white dark:bg-gray-800 rounded-xl mb-4 overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+
+  .dark .post-card {
+    @apply border border-gray-700;
+  }
+
+  .post-header {
+    @apply px-4 py-3 flex items-center gap-3;
+  }
+
+  .post-content {
+    @apply px-4 pb-4 text-sm leading-relaxed;
+  }
+
+  .post-actions {
+    @apply px-4 py-3 flex gap-6 border-t border-gray-200 dark:border-gray-700;
+  }
+
+  /* Edit Mode */
+  .edit-mode-active .card {
+    @apply border-2 border-dashed border-blue-500 p-1 rounded-xl transition-all duration-200 hover:border-purple-500;
+  }
+
+  .draggable-section {
+    @apply cursor-grab transition-all duration-200 active:cursor-grabbing;
+  }
+
+  .draggable-section.dragging {
+    @apply opacity-50 scale-95;
+  }
+
+  .draggable-section .drag-handle {
+    @apply opacity-0 transition-opacity duration-200;
+  }
+
+  .draggable-section:hover .drag-handle {
+    @apply opacity-100;
+  }
+}
