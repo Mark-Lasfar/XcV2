@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share2, Edit2, Trash2, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Edit2, Trash2 } from 'lucide-react';
 import { formatDate } from '../../utils/helpers';
 
 interface PostCardProps {
@@ -28,7 +28,8 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const handleLikeClick = () => {
     setIsLiked(!isLiked);
-    setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
+    // ✅ إصلاح الخطأ: تحديد نوع prev كـ number
+    setLikesCount((prev: number) => isLiked ? prev - 1 : prev + 1);
     onLike(post.id);
   };
 
@@ -205,3 +206,5 @@ export const PostCard: React.FC<PostCardProps> = ({
     </div>
   );
 };
+
+export default PostCard;

@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from './useAuth';
 import { profileService } from '../services/profileService';
 import { ProfileData } from '../types/profile';
 import { Section, SectionVisibility } from '../types/section';
+import { normalizeSections } from '../types/section';
 
 export const useProfile = () => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,9 +17,14 @@ export const useProfile = () => {
     setError(null);
     try {
       const data = await profileService.getProfile(nickname);
+      
+      // ✅ تطبيع الأقسام
+      if (data.sections && data.sections.length > 0) {
+        data.sections = normalizeSections(data.sections);
+      }
+      
       setProfile(data);
       
-      // ✅ الوصول إلى nickname من user.profile
       const userNickname = user?.profile?.nickname || user?.username;
       setIsOwner(userNickname === nickname);
       
@@ -32,7 +38,7 @@ export const useProfile = () => {
   }, [user]);
 
   const updateProfile = useCallback(async (data: Partial<ProfileData>) => {
-    if (!profile || !isOwner) return;
+    if (!profile || !isOwner) return null;
     try {
       const updated = await profileService.updateProfile(data);
       setProfile(updated);
@@ -44,9 +50,8 @@ export const useProfile = () => {
   }, [profile, isOwner]);
 
   const updateSection = useCallback(async (sectionId: string, data: Partial<Section>) => {
-    if (!profile || !isOwner) return;
+    if (!profile || !isOwner) return null;
     try {
-      // ✅ التأكد من وجود sections
       const currentSections = profile.sections || [];
       const updatedSections = currentSections.map(s => 
         s.id === sectionId ? { ...s, ...data } : s
@@ -61,7 +66,7 @@ export const useProfile = () => {
   }, [profile, isOwner]);
 
   const addSection = useCallback(async (section: Section) => {
-    if (!profile || !isOwner) return;
+    if (!profile || !isOwner) return null;
     try {
       const currentSections = profile.sections || [];
       const updatedSections = [...currentSections, section];
@@ -75,7 +80,7 @@ export const useProfile = () => {
   }, [profile, isOwner]);
 
   const deleteSection = useCallback(async (sectionId: string) => {
-    if (!profile || !isOwner) return;
+    if (!profile || !isOwner) return null;
     try {
       const currentSections = profile.sections || [];
       const updatedSections = currentSections.filter(s => s.id !== sectionId);
@@ -89,7 +94,7 @@ export const useProfile = () => {
   }, [profile, isOwner]);
 
   const updateSectionVisibility = useCallback(async (visibility: SectionVisibility) => {
-    if (!profile || !isOwner) return;
+    if (!profile || !isOwner) return null;
     try {
       const updated = await profileService.updateVisibility(visibility);
       setProfile({ ...profile, sectionVisibility: visibility });

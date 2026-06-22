@@ -2,6 +2,9 @@ import { ProfileData, ProfileUpdateData } from '../types/profile';
 import { Section, SectionVisibility } from '../types/section';
 import { api } from './api';
 
+// ✅ إضافة normalizeSections للاستخدام في الخدمة
+import { normalizeSections } from '../types/section';
+
 export const profileService = {
   // ============================================
   // PROFILE CRUD
@@ -32,7 +35,7 @@ export const profileService = {
 
   async updateSections(sections: Section[]): Promise<Section[]> {
     const response = await api.put('/api/profile/sections', { sections });
-    return response.data.sections;
+    return response.data.sections || [];
   },
 
   async updateVisibility(visibility: SectionVisibility): Promise<SectionVisibility> {
@@ -301,7 +304,7 @@ export const profileService = {
   },
 
   // ============================================
-  // NOTIFICATIONS FOR SETTINGS
+  // NOTIFICATION SETTINGS
   // ============================================
 
   async getNotificationSettings(): Promise<any> {

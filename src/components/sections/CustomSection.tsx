@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Section } from '../../types/section';
-import { useEditMode } from '../../hooks/useEditMode';
-import { Edit2, Trash2, Check, X, Plus } from 'lucide-react';
+import { Edit2, Trash2, Check, X } from 'lucide-react';
 
 interface CustomSectionProps {
   section: Section;
@@ -10,6 +9,9 @@ interface CustomSectionProps {
   onUpdate: (data: Partial<Section>) => void;
   onDelete: () => void;
 }
+
+// ✅ أنواع الأقسام المدعومة في القسم المخصص
+type CustomSectionType = 'text' | 'skills' | 'links' | 'gallery' | 'stats' | 'timeline' | 'testimonials' | 'cta';
 
 const CustomSection: React.FC<CustomSectionProps> = ({
   section,
@@ -34,7 +36,7 @@ const CustomSection: React.FC<CustomSectionProps> = ({
 
   const renderContent = () => {
     const content = section.content;
-    const type = section.type;
+    const type = section.type as CustomSectionType;
 
     switch (type) {
       case 'text':

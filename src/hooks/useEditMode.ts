@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Section } from '../types/section';
 import { profileService } from '../services/profileService';
 
@@ -12,7 +12,6 @@ interface EditModeState {
 
 // ✅ تعريف الأقسام الافتراضية
 const DEFAULT_SECTIONS: Section[] = [
-  // About Section
   {
     id: 'about-section',
     type: 'about',
@@ -22,7 +21,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // Experience Section
   {
     id: 'experience-section',
     type: 'experience',
@@ -32,7 +30,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Education Section
   {
     id: 'education-section',
     type: 'education',
@@ -42,7 +39,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Certificates Section
   {
     id: 'certificates-section',
     type: 'certificates',
@@ -52,7 +48,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Skills Section
   {
     id: 'skills-section',
     type: 'skills',
@@ -62,7 +57,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Projects Section
   {
     id: 'projects-section',
     type: 'projects',
@@ -72,7 +66,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Interests Section
   {
     id: 'interests-section',
     type: 'interests',
@@ -82,7 +75,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { items: [] },
   },
-  // Contact Info Section
   {
     id: 'contact-info-section',
     type: 'about',
@@ -92,7 +84,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // Social Links Section
   {
     id: 'social-links-section',
     type: 'about',
@@ -102,7 +93,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // Activity Feed Section
   {
     id: 'activity-section',
     type: 'about',
@@ -112,7 +102,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // Contribution Graph Section
   {
     id: 'contribution-graph-section',
     type: 'about',
@@ -122,7 +111,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // People Suggestions Section
   {
     id: 'people-suggestions-section',
     type: 'about',
@@ -132,7 +120,6 @@ const DEFAULT_SECTIONS: Section[] = [
     visible: true,
     content: { text: '' },
   },
-  // Pages Suggestions Section
   {
     id: 'pages-suggestions-section',
     type: 'about',
@@ -144,21 +131,18 @@ const DEFAULT_SECTIONS: Section[] = [
   },
 ];
 
-// ✅ الترتيب الافتراضي للأقسام حسب الأعمدة
+// ✅ الترتيب الافتراضي للأقسام
 const DEFAULT_ORDER = [
-  // Left column
   { id: 'skills-section', column: 'left', order: 0 },
   { id: 'interests-section', column: 'left', order: 1 },
   { id: 'contact-info-section', column: 'left', order: 2 },
   { id: 'social-links-section', column: 'left', order: 3 },
-  // Main column
   { id: 'about-section', column: 'main', order: 0 },
   { id: 'experience-section', column: 'main', order: 1 },
   { id: 'education-section', column: 'main', order: 2 },
   { id: 'certificates-section', column: 'main', order: 3 },
   { id: 'projects-section', column: 'main', order: 4 },
   { id: 'activity-section', column: 'main', order: 5 },
-  // Right column
   { id: 'contribution-graph-section', column: 'right', order: 0 },
   { id: 'people-suggestions-section', column: 'right', order: 1 },
   { id: 'pages-suggestions-section', column: 'right', order: 2 },
@@ -177,7 +161,6 @@ export const useEditMode = () => {
     setState(prev => {
       const newEditMode = !prev.editMode;
       if (newEditMode) {
-        // Save current state to history
         const newHistory = [
           ...prev.history.slice(0, prev.historyIndex + 1),
           { sections: prev.sections, order: prev.sectionOrder },
@@ -195,7 +178,6 @@ export const useEditMode = () => {
 
   const setSections = useCallback((sections: Section[]) => {
     setState(prev => {
-      // Save to history if in edit mode
       if (prev.editMode) {
         const newHistory = [
           ...prev.history.slice(0, prev.historyIndex + 1),
@@ -210,6 +192,10 @@ export const useEditMode = () => {
       }
       return { ...prev, sections };
     });
+  }, []);
+
+  const setSectionOrder = useCallback((order: any[]) => {
+    setState(prev => ({ ...prev, sectionOrder: order }));
   }, []);
 
   const undo = useCallback(() => {
@@ -257,20 +243,16 @@ export const useEditMode = () => {
 
   const resetLayout = useCallback(async () => {
     try {
-      // Reset to default layout
       await profileService.updateSections(DEFAULT_SECTIONS);
       await profileService.updateSectionOrder(DEFAULT_ORDER);
       setSections(DEFAULT_SECTIONS);
-      setState(prev => ({
-        ...prev,
-        sectionOrder: DEFAULT_ORDER,
-      }));
+      setSectionOrder(DEFAULT_ORDER);
       return true;
     } catch (error) {
       console.error('Failed to reset layout:', error);
       return false;
     }
-  }, [setSections]);
+  }, [setSections, setSectionOrder]);
 
   const addSection = useCallback((section: Section) => {
     setState(prev => {
@@ -280,7 +262,6 @@ export const useEditMode = () => {
         { id: section.id, column: section.column, order: prev.sectionOrder.length },
       ];
       
-      // Save to history
       const newHistory = [
         ...prev.history.slice(0, prev.historyIndex + 1),
         { sections: newSections, order: newOrder },
@@ -301,7 +282,6 @@ export const useEditMode = () => {
       const newSections = prev.sections.filter(s => s.id !== sectionId);
       const newOrder = prev.sectionOrder.filter(o => o.id !== sectionId);
       
-      // Save to history
       const newHistory = [
         ...prev.history.slice(0, prev.historyIndex + 1),
         { sections: newSections, order: newOrder },
@@ -323,7 +303,6 @@ export const useEditMode = () => {
         s.id === sectionId ? { ...s, ...updates } : s
       );
       
-      // Save to history
       const newHistory = [
         ...prev.history.slice(0, prev.historyIndex + 1),
         { sections: newSections, order: prev.sectionOrder },
@@ -340,34 +319,25 @@ export const useEditMode = () => {
 
   const moveSection = useCallback((sectionId: string, newColumn: 'left' | 'main' | 'right', newOrder: number) => {
     setState(prev => {
-      // Find the section
       const section = prev.sections.find(s => s.id === sectionId);
       if (!section) return prev;
 
-      // Update section column
       const updatedSection = { ...section, column: newColumn };
       const newSections = prev.sections.map(s =>
         s.id === sectionId ? updatedSection : s
       );
 
-      // Update order
-      const oldOrder = prev.sectionOrder.find(o => o.id === sectionId);
-      if (!oldOrder) return prev;
-
       const newOrderList = prev.sectionOrder
         .filter(o => o.id !== sectionId)
         .map(o => ({ ...o }));
       
-      // Insert at new position
       newOrderList.splice(newOrder, 0, { id: sectionId, column: newColumn, order: newOrder });
 
-      // Renumber orders
       const renumberedOrder = newOrderList.map((o, index) => ({
         ...o,
         order: index,
       }));
 
-      // Save to history
       const newHistory = [
         ...prev.history.slice(0, prev.historyIndex + 1),
         { sections: newSections, order: renumberedOrder },
@@ -391,7 +361,7 @@ export const useEditMode = () => {
     canRedo: state.historyIndex < state.history.length - 1,
     toggleEditMode,
     setSections,
-    setSectionOrder: (order: any[]) => setState(prev => ({ ...prev, sectionOrder: order })),
+    setSectionOrder,
     undo,
     redo,
     saveLayout,
