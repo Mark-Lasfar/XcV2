@@ -8,6 +8,7 @@ export const publicApi = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000, // ✅ إضافة timeout 30 ثانية
 });
 
 // ✅ إنشاء Axios instance للطلبات المحمية (بدون withCredentials)
@@ -16,6 +17,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000, // ✅ إضافة timeout 30 ثانية
   // ❌ إزالة withCredentials: true عشان CORS
 });
 
@@ -28,7 +30,10 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    console.error('Request interceptor error:', error);
+    return Promise.reject(error);
+  }
 );
 
 // ✅ Interceptor لتجديد التوكن
@@ -36,25 +41,47 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    
+    // ✅ منع التكرار اللانهائي
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+    
+    // ✅ فقط معالجة 401 وليس طلب refresh-token نفسه
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/refresh-token')) {
       originalRequest._retry = true;
+      
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
+        if (!refreshToken) {
+          throw new Error('No refresh token');
+        }
         
+        console.log('🔄 Refreshing token...');
         const response = await publicApi.post('/api/refresh-token', { refreshToken });
         const { accessToken } = response.data;
         
-        localStorage.setItem('userToken', accessToken);
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
+        if (accessToken) {
+          localStorage.setItem('userToken', accessToken);
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          return api(originalRequest);
+        } else {
+          throw new Error('No access token in refresh response');
+        }
       } catch (refreshError) {
+        console.error('Refresh token error:', refreshError);
+        // ✅ تنظيف التوكنات وإعادة التوجيه إلى صفحة تسجيل الدخول
         localStorage.removeItem('userToken');
         localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        
+        // ✅ منع إعادة التوجيه المتكرر
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
+    
     return Promise.reject(error);
   }
 );
