@@ -14,7 +14,9 @@ import {
   EyeOff,
   MoreHorizontal,
   Edit2,
-  Layout
+  Layout,
+  Check,
+  X
 } from 'lucide-react';
 
 interface ProfileActionsProps {
@@ -53,12 +55,37 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
   const { isAuthenticated } = useAuth();
   const [showMore, setShowMore] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
-    if (onFollow) onFollow();
+  const handleFollow = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      setIsFollowing(!isFollowing);
+      if (onFollow) await onFollow();
+    } catch (error) {
+      console.error('Follow error:', error);
+      setIsFollowing(!isFollowing);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showMore) {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.more-dropdown')) {
+          setShowMore(false);
+        }
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showMore]);
+
+  // Owner Actions
   if (isOwner) {
     return (
       <div className="flex flex-wrap gap-2 mt-4">
@@ -81,7 +108,7 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
           ) : (
             <>
               <Eye className="w-4 h-4" />
-              Preview as Visitor
+              Preview
             </>
           )}
         </button>
@@ -94,11 +121,19 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
           }`}
         >
           <Layout className="w-4 h-4" />
-          {editMode ? 'Done Editing' : 'Edit Layout'}
+          {editMode ? (
+            <>
+              <Check className="w-4 h-4" />
+              Done
+            </>
+          ) : (
+            'Edit Layout'
+          )}
         </button>
         <button
-          onClick={() => window.location.href = '/settings.html'}
+          onClick={() => window.location.href = '/settings'}
           className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2"
+          aria-label="Settings"
         >
           <Settings className="w-4 h-4" />
         </button>
@@ -106,17 +141,18 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
     );
   }
 
+  // Not Authenticated
   if (!isAuthenticated) {
     return (
       <div className="flex flex-wrap gap-2 mt-4">
         <a
-          href={`/login.html?redirect=${encodeURIComponent(window.location.pathname)}`}
+          href={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
           className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-center"
         >
           Sign in to connect
         </a>
         <a
-          href="/register.html"
+          href="/register"
           className="flex-1 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition text-center"
         >
           Join now
@@ -125,17 +161,21 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
     );
   }
 
+  // Visitor Actions
   return (
     <div className="flex flex-wrap gap-2 mt-4">
       <button
         onClick={handleFollow}
+        disabled={isLoading}
         className={`flex-1 min-w-[100px] px-4 py-2 rounded-lg transition flex items-center justify-center gap-2 ${
           isFollowing
             ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
             : 'bg-blue-500 text-white hover:bg-blue-600'
-        }`}
+        } disabled:opacity-50 disabled:cursor-not-allowed`}
       >
-        {isFollowing ? (
+        {isLoading ? (
+          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        ) : isFollowing ? (
           <>
             <UserCheck className="w-4 h-4" />
             Following
@@ -156,50 +196,51 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
         Message
       </button>
 
-      <div className="relative">
+      <div className="relative more-dropdown">
         <button
           onClick={() => setShowMore(!showMore)}
           className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition flex items-center justify-center gap-2"
+          aria-label="More actions"
         >
           <MoreHorizontal className="w-4 h-4" />
         </button>
         {showMore && (
-          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 overflow-hidden z-10">
+          <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-gray-800 rounded-lg shadow-xl border dark:border-gray-700 overflow-hidden z-10 animate-slide-down">
             <button
               onClick={() => { onShare?.(); setShowMore(false); }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-3 text-sm"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="w-4 h-4 text-gray-500" />
               Share Profile
             </button>
             <button
               onClick={() => { onCopyLink?.(); setShowMore(false); }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-3 text-sm"
             >
-              <Copy className="w-4 h-4" />
+              <Copy className="w-4 h-4 text-gray-500" />
               Copy Link
             </button>
             <button
               onClick={() => { onRate?.(); setShowMore(false); }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-3 text-sm"
             >
-              <Star className="w-4 h-4" />
+              <Star className="w-4 h-4 text-yellow-500" />
               Rate User
             </button>
             <button
               onClick={() => { onDownloadCV?.(); setShowMore(false); }}
-              className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition flex items-center gap-3 text-sm"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 text-blue-500" />
               Download CV
             </button>
             <hr className="dark:border-gray-700" />
             <button
               onClick={() => { onReport?.(); setShowMore(false); }}
-              className="w-full px-4 py-2 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-2 text-sm"
+              className="w-full px-4 py-2.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition flex items-center gap-3 text-sm"
             >
               <Flag className="w-4 h-4" />
-              Report
+              Report User
             </button>
           </div>
         )}

@@ -4,7 +4,7 @@ import { useEditMode } from '../../hooks/useEditMode';
 import { Plus, Edit2, Trash2, Check, X } from 'lucide-react';
 
 interface ExperienceSectionProps {
-  experiences: Experience[];
+  experiences: Experience[] | any; // ✅ قبول Array أو Object
   isOwner: boolean;
   editMode: boolean;
   onUpdate: (experiences: Experience[]) => void;
@@ -12,14 +12,27 @@ interface ExperienceSectionProps {
   onTitleChange?: (title: string) => void;
 }
 
+// ✅ دالة مساعدة لتحويل Object إلى Array
+const toArray = (data: any): Experience[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object') {
+    return Object.values(data);
+  }
+  return [];
+};
+
 const ExperienceSection: React.FC<ExperienceSectionProps> = ({
-  experiences,
+  experiences: experiencesProp,
   isOwner,
   editMode,
   onUpdate,
   title = 'Experience',
   onTitleChange,
 }) => {
+  // ✅ تحويل البيانات إلى Array
+  const experiences = toArray(experiencesProp);
+  
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newExp, setNewExp] = useState<Experience>({ company: '', role: '', duration: '' });
@@ -35,7 +48,9 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
   };
 
   const handleDelete = (index: number) => {
-    onUpdate(experiences.filter((_, i) => i !== index));
+    if (confirm('Delete this experience entry?')) {
+      onUpdate(experiences.filter((_, i) => i !== index));
+    }
   };
 
   const handleEdit = (index: number) => {
@@ -53,6 +68,8 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
   const handleTitleSave = () => {
     if (onTitleChange) onTitleChange(localTitle);
   };
+
+  const hasExperiences = experiences.length > 0;
 
   return (
     <div className="card">
@@ -74,7 +91,8 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
         {isOwner && editMode && (
           <button
             onClick={() => setIsAdding(true)}
-            className="text-blue-500 hover:text-blue-600"
+            className="text-blue-500 hover:text-blue-600 transition"
+            aria-label="Add experience"
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -82,21 +100,21 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
       </div>
 
       <div className="card-content">
-        {experiences.length === 0 ? (
+        {!hasExperiences ? (
           <p className="text-gray-500 text-sm">
             {isOwner ? 'Click + to add your experience' : 'No experience added'}
           </p>
         ) : (
           <div className="space-y-4">
             {experiences.map((exp, index) => (
-              <div key={index} className="timeline-item group relative">
+              <div key={index} className="timeline-item group relative border-l-2 border-blue-400 pl-4 pb-4 last:pb-0">
                 {editingIndex === index ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
                     <input
                       type="text"
                       value={editingExp.company}
                       onChange={(e) => setEditingExp({ ...editingExp, company: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Company"
                       autoFocus
                     />
@@ -104,27 +122,27 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
                       type="text"
                       value={editingExp.role}
                       onChange={(e) => setEditingExp({ ...editingExp, role: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Role"
                     />
                     <input
                       type="text"
                       value={editingExp.duration}
                       onChange={(e) => setEditingExp({ ...editingExp, duration: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Duration (e.g., 2020-2023)"
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleSaveEdit(index)}
-                        className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1"
+                        className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-1"
                       >
                         <Check className="w-4 h-4" />
                         Save
                       </button>
                       <button
                         onClick={() => setEditingIndex(null)}
-                        className="px-3 py-1 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 flex items-center gap-1"
+                        className="px-3 py-1 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 flex items-center gap-1"
                       >
                         <X className="w-4 h-4" />
                         Cancel
@@ -133,6 +151,8 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
                   </div>
                 ) : (
                   <>
+                    {/* Timeline dot */}
+                    <div className="absolute left-[-7px] top-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white dark:border-gray-800" />
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="font-semibold text-gray-900 dark:text-white">
@@ -147,13 +167,15 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
                           <button
                             onClick={() => handleEdit(index)}
-                            className="p-1 text-blue-500 hover:text-blue-600"
+                            className="p-1 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
+                            aria-label="Edit experience"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(index)}
-                            className="p-1 text-red-500 hover:text-red-600"
+                            className="p-1 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                            aria-label="Delete experience"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -169,39 +191,39 @@ const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
         {/* Add Form */}
         {isAdding && (
-          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+          <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-600">
             <div className="space-y-3">
               <input
                 type="text"
                 value={newExp.company}
                 onChange={(e) => setNewExp({ ...newExp, company: e.target.value })}
                 placeholder="Company name"
-                className="w-full px-3 py-2 border rounded-lg"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <input
                 type="text"
                 value={newExp.role}
                 onChange={(e) => setNewExp({ ...newExp, role: e.target.value })}
                 placeholder="Your role"
-                className="w-full px-3 py-2 border rounded-lg"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <input
                 type="text"
                 value={newExp.duration}
                 onChange={(e) => setNewExp({ ...newExp, duration: e.target.value })}
                 placeholder="Duration (e.g., 2020-2023)"
-                className="w-full px-3 py-2 border rounded-lg"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleAdd}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                 >
-                  Add
+                  Add Experience
                 </button>
                 <button
                   onClick={() => setIsAdding(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
                 >
                   Cancel
                 </button>

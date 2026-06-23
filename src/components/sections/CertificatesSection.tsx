@@ -3,7 +3,7 @@ import { Certificate } from '../../types/profile';
 import { Plus, Edit2, Trash2, Check, X, Award } from 'lucide-react';
 
 interface CertificatesSectionProps {
-  certificates: Certificate[];
+  certificates: Certificate[] | any; // ✅ قبول Array أو Object
   isOwner: boolean;
   editMode: boolean;
   onUpdate: (certificates: Certificate[]) => void;
@@ -11,14 +11,27 @@ interface CertificatesSectionProps {
   onTitleChange?: (title: string) => void;
 }
 
+// ✅ دالة مساعدة لتحويل Object إلى Array
+const toArray = (data: any): Certificate[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (typeof data === 'object') {
+    return Object.values(data);
+  }
+  return [];
+};
+
 const CertificatesSection: React.FC<CertificatesSectionProps> = ({
-  certificates,
+  certificates: certificatesProp,
   isOwner,
   editMode,
   onUpdate,
   title = 'Licenses & Certificates',
   onTitleChange,
 }) => {
+  // ✅ تحويل البيانات إلى Array
+  const certificates = toArray(certificatesProp);
+  
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newCert, setNewCert] = useState<Certificate>({ name: '', issuer: '', year: '' });
@@ -64,6 +77,8 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
     return years;
   };
 
+  const hasCertificates = certificates.length > 0;
+
   return (
     <div className="card">
       <div className="card-header flex justify-between items-center">
@@ -88,7 +103,8 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
         {isOwner && editMode && (
           <button
             onClick={() => setIsAdding(true)}
-            className="text-blue-500 hover:text-blue-600"
+            className="text-blue-500 hover:text-blue-600 transition"
+            aria-label="Add certificate"
           >
             <Plus className="w-5 h-5" />
           </button>
@@ -96,21 +112,21 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
       </div>
 
       <div className="card-content">
-        {certificates.length === 0 ? (
+        {!hasCertificates ? (
           <p className="text-gray-500 text-sm">
             {isOwner ? 'Click + to add your certificates' : 'No certificates added'}
           </p>
         ) : (
           <div className="space-y-3">
             {certificates.map((cert, index) => (
-              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg group">
+              <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg group transition hover:bg-gray-100 dark:hover:bg-gray-600/50">
                 {editingIndex === index ? (
                   <div className="space-y-3 w-full">
                     <input
                       type="text"
                       value={editingCert.name}
                       onChange={(e) => setEditingCert({ ...editingCert, name: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Certificate name"
                       autoFocus
                     />
@@ -118,13 +134,13 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                       type="text"
                       value={editingCert.issuer}
                       onChange={(e) => setEditingCert({ ...editingCert, issuer: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       placeholder="Issuing organization"
                     />
                     <select
                       value={editingCert.year}
                       onChange={(e) => setEditingCert({ ...editingCert, year: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600"
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-gray-600 dark:border-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     >
                       <option value="">Select year</option>
                       {getYearOptions().map((y) => (
@@ -134,14 +150,14 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleSaveEdit(index)}
-                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition flex items-center gap-2"
                       >
                         <Check className="w-4 h-4" />
                         Save
                       </button>
                       <button
                         onClick={() => setEditingIndex(null)}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 flex items-center gap-2"
+                        className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 flex items-center gap-2"
                       >
                         <X className="w-4 h-4" />
                         Cancel
@@ -164,12 +180,14 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                         <button
                           onClick={() => handleEdit(index)}
                           className="p-1.5 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition"
+                          aria-label="Edit certificate"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(index)}
                           className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                          aria-label="Delete certificate"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -191,19 +209,19 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
                 value={newCert.name}
                 onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
                 placeholder="Certificate name"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <input
                 type="text"
                 value={newCert.issuer}
                 onChange={(e) => setNewCert({ ...newCert, issuer: e.target.value })}
                 placeholder="Issuing organization"
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               />
               <select
                 value={newCert.year}
                 onChange={(e) => setNewCert({ ...newCert, year: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700"
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               >
                 <option value="">Select year</option>
                 {getYearOptions().map((y) => (
@@ -213,13 +231,13 @@ const CertificatesSection: React.FC<CertificatesSectionProps> = ({
               <div className="flex gap-2">
                 <button
                   onClick={handleAdd}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                 >
                   Add Certificate
                 </button>
                 <button
                   onClick={() => setIsAdding(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
                 >
                   Cancel
                 </button>

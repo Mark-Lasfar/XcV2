@@ -25,6 +25,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localProfile, setLocalProfile] = useState(profile);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -35,6 +36,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       setLocalProfile({ ...localProfile, avatar: url });
     } catch (error) {
       console.error('Avatar upload error:', error);
+      alert('Failed to upload avatar. Please try again.');
     }
   };
 
@@ -45,11 +47,25 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       setLocalProfile({ ...localProfile, coverImage: url });
     } catch (error) {
       console.error('Cover upload error:', error);
+      alert('Failed to upload cover image. Please try again.');
     }
   };
 
-  const handleSave = () => {
-    onUpdate(localProfile);
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdate(localProfile);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Profile update error:', error);
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setLocalProfile(profile);
     setIsEditing(false);
   };
 
@@ -79,49 +95,82 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
         {/* Name & Title */}
         <div className="text-center mt-3">
           {isEditing ? (
-            <div className="space-y-2">
-              <input
-                type="text"
-                value={localProfile.nickname || ''}
-                onChange={(e) => setLocalProfile({ ...localProfile, nickname: e.target.value })}
-                className="w-full px-3 py-2 text-lg font-bold border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                placeholder="Nickname"
-              />
-              <input
-                type="text"
-                value={localProfile.jobTitle || ''}
-                onChange={(e) => setLocalProfile({ ...localProfile, jobTitle: e.target.value })}
-                className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                placeholder="Job Title"
-              />
-              <textarea
-                value={localProfile.bio || ''}
-                onChange={(e) => setLocalProfile({ ...localProfile, bio: e.target.value })}
-                className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                rows={3}
-                placeholder="Bio"
-              />
-              <button
-                onClick={handleSave}
-                className="w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-              >
-                Save Changes
-              </button>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Nickname</label>
+                <input
+                  type="text"
+                  value={localProfile.nickname || ''}
+                  onChange={(e) => setLocalProfile({ ...localProfile, nickname: e.target.value })}
+                  className="w-full px-3 py-2 text-lg font-bold border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Your nickname"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Job Title</label>
+                <input
+                  type="text"
+                  value={localProfile.jobTitle || ''}
+                  onChange={(e) => setLocalProfile({ ...localProfile, jobTitle: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Your job title"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Bio</label>
+                <textarea
+                  value={localProfile.bio || ''}
+                  onChange={(e) => setLocalProfile({ ...localProfile, bio: e.target.value })}
+                  className="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  rows={3}
+                  placeholder="Tell your story..."
+                  maxLength={500}
+                />
+                <div className="text-xs text-gray-400 text-right mt-1">
+                  {localProfile.bio?.length || 0}/500
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex-1 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <>
-              <h1 className="text-xl font-bold flex items-center justify-center gap-2">
+              <h1 className="text-xl font-bold flex items-center justify-center gap-2 text-gray-900 dark:text-white">
                 {profile.nickname || profile.username}
                 {profile.isVerified && (
-                  <span className="text-blue-500" title="Verified">
+                  <span className="text-blue-500" title="Verified Account">
                     <svg className="w-5 h-5 inline" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 1L15.09 4.26L19.8 5.4L21.45 9.84L20.1 14.4L16.2 17.4L12 19.9L7.8 17.4L3.9 14.4L2.55 9.84L4.2 5.4L8.91 4.26L12 1Z" />
                     </svg>
                   </span>
                 )}
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">{profile.jobTitle}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{profile.bio}</p>
+              {profile.jobTitle && (
+                <p className="text-gray-600 dark:text-gray-400">{profile.jobTitle}</p>
+              )}
+              {profile.bio && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-3">{profile.bio}</p>
+              )}
             </>
           )}
         </div>
@@ -156,7 +205,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleAvatarUpload(file);
@@ -166,7 +215,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
         type="file"
         ref={coverInputRef}
         className="hidden"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) handleCoverUpload(file);

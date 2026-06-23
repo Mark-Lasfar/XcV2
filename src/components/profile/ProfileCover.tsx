@@ -18,6 +18,7 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
 }) => {
   const [isHovering, setIsHovering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
@@ -26,9 +27,9 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
     if (!file) return;
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload a valid image (JPEG, PNG, WEBP, or GIF)');
+      alert('Please upload a valid image (JPEG, PNG, WEBP, GIF, or SVG)');
       return;
     }
 
@@ -39,13 +40,32 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
     }
 
     setIsLoading(true);
+    setUploadProgress(0);
+    
+    // Simulate progress for better UX
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
     try {
       await onUpload(file);
+      setUploadProgress(100);
+      setTimeout(() => {
+        setUploadProgress(0);
+      }, 500);
     } catch (error) {
       console.error('Cover upload error:', error);
       alert('Failed to upload cover image. Please try again.');
+      setUploadProgress(0);
     } finally {
       setIsLoading(false);
+      clearInterval(progressInterval);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -64,7 +84,7 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
 
   return (
     <div
-      className="relative w-full h-32 md:h-40 overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600"
+      className="relative w-full h-32 md:h-40 lg:h-48 overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -83,22 +103,25 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
         </div>
       )}
 
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span className="text-white text-sm">Uploading...</span>
+      {/* Upload Progress */}
+      {isLoading && uploadProgress > 0 && uploadProgress < 100 && (
+        <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-3">
+          <div className="w-48 h-1.5 bg-white/30 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-white rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress}%` }}
+            />
           </div>
+          <span className="text-white text-sm">{uploadProgress}%</span>
         </div>
       )}
 
       {/* Edit Controls */}
       {isOwner && editMode && !isLoading && isHovering && (
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center gap-3 transition-opacity">
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3 transition-opacity animate-fade-in">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-2 bg-white/90 text-gray-800 rounded-lg hover:bg-white transition flex items-center gap-2 text-sm font-medium"
+            className="px-4 py-2 bg-white/95 text-gray-800 rounded-lg hover:bg-white transition flex items-center gap-2 text-sm font-medium shadow-lg"
           >
             <Camera className="w-4 h-4" />
             Change Cover
@@ -106,7 +129,7 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
           {image && (
             <button
               onClick={() => setShowRemoveConfirm(true)}
-              className="px-3 py-2 bg-red-500/90 text-white rounded-lg hover:bg-red-600 transition flex items-center gap-2 text-sm font-medium"
+              className="px-4 py-2 bg-red-500/90 text-white rounded-lg hover:bg-red-600 transition flex items-center gap-2 text-sm font-medium shadow-lg"
             >
               <Trash2 className="w-4 h-4" />
               Remove
@@ -117,9 +140,9 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
 
       {/* Remove Confirmation Modal */}
       {showRemoveConfirm && (
-        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full mx-4">
-            <h3 className="text-lg font-semibold mb-2">Remove Cover Image?</h3>
+        <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10 animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Remove Cover Image?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               This will remove your cover image. You can upload a new one later.
             </p>
@@ -145,7 +168,7 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
         onChange={handleFileSelect}
         className="hidden"
       />
