@@ -657,7 +657,7 @@ const ProfilePage: React.FC = () => {
                   ))}
                 </DragDropContext>
 
-                {/* ✅ استخدم _id (ObjectId) وليس nickname */}
+                {/* ✅ تمرير nickname بدلاً من userId */}
                 {(activeTab === 'activity' || !isMobile) && (
                   <ActivityFeed
                     userId={profile._id || profile.id}
@@ -666,7 +666,7 @@ const ProfilePage: React.FC = () => {
                   />
                 )}
 
-                {/* ✅ استخدم _id (ObjectId) وليس nickname */}
+                {/* ✅ تمرير nickname بدلاً من userId */}
                 {(activeTab === 'about' || !isMobile) && (
                   <ContributionGraph
                     userId={profile._id || profile.id}
