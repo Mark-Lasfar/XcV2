@@ -5,6 +5,17 @@ import { ProfileData } from '../types/profile';
 import { Section, SectionVisibility } from '../types/section';
 import { normalizeSections } from '../types/section';
 
+// ✅ دالة مساعدة لتحويل Object إلى Array
+// مثال: { "0": { name: "React" }, "1": { name: "Node" } } => [{ name: "React" }, { name: "Node" }]
+const objectToArray = <T>(obj: any): T[] => {
+  if (!obj) return [];
+  if (Array.isArray(obj)) return obj;
+  if (typeof obj === 'object') {
+    return Object.values(obj);
+  }
+  return [];
+};
+
 export const useProfile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -12,7 +23,7 @@ export const useProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
-  // ✅ دالة مساعدة لإنشاء الأقسام الافتراضية
+  // ✅ دالة مساعدة لإنشاء الأقسام الافتراضية من بيانات البروفايل
   const getDefaultSections = useCallback((profileData: ProfileData): Section[] => {
     const sections: Section[] = [];
 
@@ -27,8 +38,9 @@ export const useProfile = () => {
       content: { text: profileData.bio || 'No about information provided.' }
     });
 
-    // 2. Skills Section
-    if (profileData.skills && profileData.skills.length > 0) {
+    // 2. Skills Section - تحويل من Object إلى Array
+    const skills = objectToArray(profileData.skills);
+    if (skills.length > 0) {
       sections.push({
         id: 'skills',
         type: 'skills',
@@ -36,12 +48,13 @@ export const useProfile = () => {
         column: 'left',
         order: 0,
         visible: true,
-        content: { items: profileData.skills }
+        content: { items: skills }
       });
     }
 
-    // 3. Experience Section
-    if (profileData.experience && profileData.experience.length > 0) {
+    // 3. Experience Section - تحويل من Object إلى Array
+    const experience = objectToArray(profileData.experience);
+    if (experience.length > 0) {
       sections.push({
         id: 'experience',
         type: 'experience',
@@ -49,12 +62,13 @@ export const useProfile = () => {
         column: 'main',
         order: 1,
         visible: true,
-        content: { items: profileData.experience }
+        content: { items: experience }
       });
     }
 
-    // 4. Education Section
-    if (profileData.education && profileData.education.length > 0) {
+    // 4. Education Section - تحويل من Object إلى Array
+    const education = objectToArray(profileData.education);
+    if (education.length > 0) {
       sections.push({
         id: 'education',
         type: 'education',
@@ -62,12 +76,13 @@ export const useProfile = () => {
         column: 'main',
         order: 2,
         visible: true,
-        content: { items: profileData.education }
+        content: { items: education }
       });
     }
 
-    // 5. Certificates Section
-    if (profileData.certificates && profileData.certificates.length > 0) {
+    // 5. Certificates Section - تحويل من Object إلى Array
+    const certificates = objectToArray(profileData.certificates);
+    if (certificates.length > 0) {
       sections.push({
         id: 'certificates',
         type: 'certificates',
@@ -75,12 +90,13 @@ export const useProfile = () => {
         column: 'right',
         order: 0,
         visible: true,
-        content: { items: profileData.certificates }
+        content: { items: certificates }
       });
     }
 
-    // 6. Projects Section
-    if (profileData.projects && profileData.projects.length > 0) {
+    // 6. Projects Section - تحويل من Object إلى Array
+    const projects = objectToArray(profileData.projects);
+    if (projects.length > 0) {
       sections.push({
         id: 'projects',
         type: 'projects',
@@ -88,12 +104,13 @@ export const useProfile = () => {
         column: 'main',
         order: 3,
         visible: true,
-        content: { items: profileData.projects }
+        content: { items: projects }
       });
     }
 
-    // 7. Interests Section
-    if (profileData.interests && profileData.interests.length > 0) {
+    // 7. Interests Section - تحويل من Object إلى Array
+    const interests = objectToArray(profileData.interests);
+    if (interests.length > 0) {
       sections.push({
         id: 'interests',
         type: 'interests',
@@ -101,11 +118,11 @@ export const useProfile = () => {
         column: 'right',
         order: 1,
         visible: true,
-        content: { items: profileData.interests }
+        content: { items: interests }
       });
     }
 
-    // 8. Contact Info Section (إذا كان هناك رقم هاتف أو إيميل)
+    // 8. Contact Info Section
     if (profileData.phone || profileData.email) {
       const contactInfo: string[] = [];
       if (profileData.phone) contactInfo.push(`📱 ${profileData.phone}`);
@@ -158,11 +175,11 @@ export const useProfile = () => {
     try {
       const data = await profileService.getProfile(nickname);
       
-      // ✅ تطبيع الأقسام إذا كانت موجودة
+      // ✅ إذا كانت الأقسام موجودة، طبعها
       if (data.sections && data.sections.length > 0) {
         data.sections = normalizeSections(data.sections);
       } else {
-        // ✅ إذا مفيش أقسام، استخدم الأقسام الافتراضية
+        // ✅ إذا مفيش أقسام، استخدم الأقسام الافتراضية مع تحويل Objects إلى Arrays
         data.sections = getDefaultSections(data);
       }
       

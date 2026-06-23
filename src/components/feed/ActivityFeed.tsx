@@ -4,9 +4,9 @@ import { PostCard } from './PostCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useEditMode } from '../../hooks/useEditMode';
 
-// ✅ تغيير من userId إلى nickname
+// ✅ استخدم userId (ObjectId) وليس nickname
 interface ActivityFeedProps {
-  nickname: string;  // ✅ استخدم nickname بدلاً من userId
+  userId: string;  // ✅ ObjectId من البروفايل
   isOwner: boolean;
   editMode: boolean;
 }
@@ -34,7 +34,7 @@ interface Post {
   timestamp?: string;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId, isOwner, editMode }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -42,21 +42,18 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode
   const { token } = useAuth();
 
   useEffect(() => {
-    // ✅ إعادة تعيين الحالة عند تغيير النيكネーム
     setPosts([]);
     setPage(1);
     setHasMore(true);
     loadPosts();
-  }, [nickname]);  // ✅ استخدم nickname
+  }, [userId]);
 
   const loadPosts = async () => {
     if (!hasMore) return;
     setLoading(true);
     try {
-      // ✅ استخدم nickname
-      const result = await profileService.getInteractions(nickname, page);
+      const result = await profileService.getInteractions(userId, page);
       
-      // ✅ التعامل مع البيانات بشكل صحيح
       let newPosts: Post[] = [];
       
       if (Array.isArray(result)) {
@@ -69,7 +66,6 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode
         newPosts = result.items;
       }
       
-      // ✅ تطبيع البيانات
       newPosts = newPosts.map(post => ({
         ...post,
         id: post.id || post._id || `post-${Date.now()}`,
@@ -78,7 +74,6 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode
       
       setPosts(prev => [...prev, ...newPosts]);
       
-      // ✅ التحقق من وجود المزيد من الصفحات
       if (result && result.pagination) {
         setHasMore(result.pagination.page < result.pagination.pages);
       } else if (newPosts.length < 10) {
@@ -97,17 +92,14 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode
   };
 
   const handleLike = async (postId: string) => {
-    // Implement like functionality
     console.log('Like post:', postId);
   };
 
   const handleComment = async (postId: string, comment: string) => {
-    // Implement comment functionality
     console.log('Comment on post:', postId, comment);
   };
 
   const handleShare = async (postId: string) => {
-    // Implement share functionality
     console.log('Share post:', postId);
   };
 

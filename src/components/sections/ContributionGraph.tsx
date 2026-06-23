@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../services/profileService';
 
-// ✅ تغيير من userId إلى nickname
+// ✅ استخدم userId (ObjectId) وليس nickname
 interface ContributionGraphProps {
-  nickname: string;  // ✅ استخدم nickname بدلاً من userId
+  userId: string;  // ✅ ObjectId من البروفايل
   isOwner: boolean;
   year?: number;
 }
@@ -27,7 +27,7 @@ interface ContributionData {
 }
 
 const ContributionGraph: React.FC<ContributionGraphProps> = ({
-  nickname,  // ✅ استخدم nickname
+  userId,
   isOwner,
   year = new Date().getFullYear(),
 }) => {
@@ -37,15 +37,13 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
 
   useEffect(() => {
     loadContributions();
-  }, [nickname, selectedYear]);  // ✅ استخدم nickname
+  }, [userId, selectedYear]);
 
   const loadContributions = async () => {
     setLoading(true);
     try {
-      // ✅ استخدم nickname
-      const result = await profileService.getContributions(nickname, selectedYear);
+      const result = await profileService.getContributions(userId, selectedYear);
       
-      // ✅ تأكد من صحة البيانات
       if (result && result.weeks) {
         setData(result);
       } else {
