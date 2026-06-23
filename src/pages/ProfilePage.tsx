@@ -659,7 +659,7 @@ const ProfilePage: React.FC = () => {
 
                 {(activeTab === 'activity' || !isMobile) && (
                   <ActivityFeed
-                    userId={profile.id || profile._id}
+                    userId={profile._id}
                     isOwner={isOwner}
                     editMode={editMode}
                   />
@@ -667,7 +667,7 @@ const ProfilePage: React.FC = () => {
 
                 {(activeTab === 'about' || !isMobile) && (
                   <ContributionGraph
-                    userId={profile.id || profile._id}
+                    userId={profile._id}
                     isOwner={isOwner}
                   />
                 )}

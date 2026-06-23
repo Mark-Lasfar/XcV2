@@ -18,7 +18,7 @@ interface SocialProvider {
   bgColor: string;
   hoverColor: string;
   enabled: boolean;
-  authPath: string; // ✅ إضافة مسار المصادقة
+  authPath: string;
 }
 
 export const SocialLogin: React.FC<SocialLoginProps> = ({
@@ -104,7 +104,41 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
       const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback`);
       const successRedirect = encodeURIComponent('/profile/me');
 
-      // ✅ استخدام المسار الصحيح من provider
+      // ✅ Magic Link - POST request
+      if (provider.id === 'email') {
+        const email = prompt('Enter your email address:');
+        if (!email) {
+          setLoading(null);
+          return;
+        }
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showToast('Please enter a valid email address', 'error');
+          setLoading(null);
+          return;
+        }
+
+        // ✅ إرسال طلب POST
+        const response = await fetch(`${baseUrl}/auth/magic-link`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('Magic link sent to your email!', 'success');
+          if (onSuccess) onSuccess('email', { email });
+        } else {
+          throw new Error(data.error || 'Failed to send magic link');
+        }
+
+        setLoading(null);
+        return;
+      }
+
+      // ✅ OAuth Providers - GET redirect
       const authUrl = `${baseUrl}${provider.authPath}?redirect_uri=${redirectUri}&success_redirect=${successRedirect}`;
       
       console.log('🔐 Redirecting to:', authUrl);
@@ -113,7 +147,6 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
     } catch (error: any) {
       showToast(error.message || 'Social login failed', 'error');
       if (onError) onError(error.message);
-    } finally {
       setLoading(null);
     }
   };
