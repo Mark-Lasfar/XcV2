@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 
 // ✅ تعريف الثيمات المتاحة
 export interface Theme {
@@ -18,6 +18,8 @@ interface ThemeContextType {
   setTheme: (theme: 'light' | 'dark') => void;
   setCurrentTheme: (theme: Theme) => void;
   applyTheme: (theme: Theme) => void;
+  applyCustomColors: (primary: string, secondary: string) => void;
+  resetToDefault: () => void;
 }
 
 // ✅ الثيمات المدمجة
@@ -62,7 +64,26 @@ export const AVAILABLE_THEMES: Theme[] = [
     name: 'Pink', 
     colors: { primary: '#db2777', secondary: '#ec4899' } 
   },
+  { 
+    id: 'teal', 
+    name: 'Teal', 
+    colors: { primary: '#0d9488', secondary: '#14b8a6' } 
+  },
+  { 
+    id: 'indigo', 
+    name: 'Indigo', 
+    colors: { primary: '#4f46e5', secondary: '#6366f1' } 
+  },
 ];
+
+// ✅ Hook مخصص للاستخدام
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
 
 export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
@@ -105,6 +126,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
+  // ✅ تطبيق ألوان مخصصة (بدون حفظ في localStorage)
+  const applyCustomColors = useCallback((primary: string, secondary: string) => {
+    document.documentElement.style.setProperty('--profile-primary', primary);
+    document.documentElement.style.setProperty('--profile-secondary', secondary);
+  }, []);
+
+  // ✅ إعادة تعيين إلى الثيم الافتراضي
+  const resetToDefault = useCallback(() => {
+    const defaultTheme = AVAILABLE_THEMES[0]; // Light
+    applyTheme(defaultTheme);
+  }, [applyTheme]);
+
   // ✅ تبديل الثيم (فاتح/داكن)
   const toggleTheme = useCallback(() => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -136,25 +169,42 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ✅ تحميل الثيم المحفوظ عند بدء التشغيل
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      if (savedTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-        document.body.classList.add('dark');
+    try {
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+      if (savedTheme) {
+        setTheme(savedTheme);
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.body.classList.add('dark');
+        }
       }
-    }
 
-    const savedThemeId = localStorage.getItem('currentThemeId');
-    if (savedThemeId) {
-      const found = AVAILABLE_THEMES.find(t => t.id === savedThemeId);
-      if (found) {
-        setCurrentTheme(found);
-        document.documentElement.style.setProperty('--profile-primary', found.colors.primary);
-        document.documentElement.style.setProperty('--profile-secondary', found.colors.secondary);
+      const savedThemeId = localStorage.getItem('currentThemeId');
+      if (savedThemeId) {
+        const found = AVAILABLE_THEMES.find(t => t.id === savedThemeId);
+        if (found) {
+          setCurrentTheme(found);
+          document.documentElement.style.setProperty('--profile-primary', found.colors.primary);
+          document.documentElement.style.setProperty('--profile-secondary', found.colors.secondary);
+        }
       }
+
+      // ✅ التحقق من وجود إعدادات محفوظة من الباك إند (للمالك)
+      const savedDesign = localStorage.getItem('profileDesignSettings');
+      if (savedDesign) {
+        try {
+          const design = JSON.parse(savedDesign);
+          if (design.primaryColor && design.secondaryColor) {
+            applyCustomColors(design.primaryColor, design.secondaryColor);
+          }
+        } catch (e) {
+          console.error('Error parsing saved design:', e);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading theme:', error);
     }
-  }, []);
+  }, [applyCustomColors]);
 
   return (
     <ThemeContext.Provider
@@ -166,6 +216,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setTheme: setThemeMode,
         setCurrentTheme,
         applyTheme,
+        applyCustomColors,
+        resetToDefault,
       }}
     >
       {children}

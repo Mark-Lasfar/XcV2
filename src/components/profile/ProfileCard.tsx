@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ProfileData } from '../../types/profile';
 import ProfileStats from './ProfileStats';
 import ProfileActions from './ProfileActions';
@@ -26,14 +26,27 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [localProfile, setLocalProfile] = useState(profile);
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [coverError, setCoverError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ تحديث localProfile عند تغيير profile
+  useEffect(() => {
+    setLocalProfile(profile);
+  }, [profile]);
+
+  // ✅ التحقق من وجود البيانات الأساسية
+  const displayName = profile.nickname || profile.username || 'User';
+  const displayAvatar = profile.avatar || '/assets/img/default-avatar.png';
+  const displayCover = profile.coverImage || '/assets/img/default-cover.png';
 
   const handleAvatarUpload = async (file: File) => {
     try {
       const url = await uploadService.uploadAvatar(file);
       onUpdate({ avatar: url });
       setLocalProfile({ ...localProfile, avatar: url });
+      setAvatarError(false);
     } catch (error) {
       console.error('Avatar upload error:', error);
       alert('Failed to upload avatar. Please try again.');
@@ -45,6 +58,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       const url = await uploadService.uploadCover(file);
       onUpdate({ coverImage: url });
       setLocalProfile({ ...localProfile, coverImage: url });
+      setCoverError(false);
     } catch (error) {
       console.error('Cover upload error:', error);
       alert('Failed to upload cover image. Please try again.');
@@ -56,6 +70,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
     try {
       await onUpdate(localProfile);
       setIsEditing(false);
+      // ✅ تحديث profile بالبيانات الجديدة
+      setLocalProfile(localProfile);
     } catch (error) {
       console.error('Profile update error:', error);
       alert('Failed to update profile. Please try again.');
@@ -73,7 +89,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
     <div className="card overflow-hidden">
       {/* Cover Image */}
       <ProfileCover
-        image={profile.coverImage} 
+        image={displayCover}
         isOwner={isOwner}
         editMode={editMode}
         onUpload={handleCoverUpload}
@@ -84,8 +100,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
       <div className="relative px-4 pb-4 -mt-12">
         <div className="flex justify-center">
           <ProfileAvatar
-            avatar={profile.avatar}
-            name={profile.nickname || profile.username}
+            avatar={displayAvatar}
+            name={displayName}
             isOwner={isOwner}
             editMode={editMode}
             onUpload={handleAvatarUpload}
@@ -97,7 +113,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           {isEditing ? (
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Nickname</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left font-medium">
+                  Nickname
+                </label>
                 <input
                   type="text"
                   value={localProfile.nickname || ''}
@@ -107,7 +125,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Job Title</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left font-medium">
+                  Job Title
+                </label>
                 <input
                   type="text"
                   value={localProfile.jobTitle || ''}
@@ -117,7 +137,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left">Bio</label>
+                <label className="text-xs text-gray-500 dark:text-gray-400 block text-left font-medium">
+                  Bio
+                </label>
                 <textarea
                   value={localProfile.bio || ''}
                   onChange={(e) => setLocalProfile({ ...localProfile, bio: e.target.value })}
@@ -156,7 +178,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           ) : (
             <>
               <h1 className="text-xl font-bold flex items-center justify-center gap-2 text-gray-900 dark:text-white">
-                {profile.nickname || profile.username}
+                {displayName}
                 {profile.isVerified && (
                   <span className="text-blue-500" title="Verified Account">
                     <svg className="w-5 h-5 inline" viewBox="0 0 24 24" fill="currentColor">
@@ -169,7 +191,9 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 <p className="text-gray-600 dark:text-gray-400">{profile.jobTitle}</p>
               )}
               {profile.bio && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-3">{profile.bio}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 line-clamp-3 whitespace-pre-wrap">
+                  {profile.bio}
+                </p>
               )}
             </>
           )}

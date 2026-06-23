@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { 
   UserPlus, 
@@ -57,6 +57,12 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
   const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ✅ Reset follow state when profile changes
+  useEffect(() => {
+    // يمكنك إضافة منطق لجلب حالة المتابعة من الـ API هنا
+    setIsFollowing(false);
+  }, [profile?._id]);
+
   const handleFollow = async () => {
     if (isLoading) return;
     setIsLoading(true);
@@ -72,7 +78,7 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
   };
 
   // Close dropdown when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (showMore) {
         const target = e.target as HTMLElement;
@@ -85,7 +91,7 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showMore]);
 
-  // Owner Actions
+  // ✅ Owner Actions
   if (isOwner) {
     return (
       <div className="flex flex-wrap gap-2 mt-4">
@@ -141,7 +147,7 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
     );
   }
 
-  // Not Authenticated
+  // ✅ Not Authenticated
   if (!isAuthenticated) {
     return (
       <div className="flex flex-wrap gap-2 mt-4">
@@ -161,7 +167,7 @@ const ProfileActions: React.FC<ProfileActionsProps> = ({
     );
   }
 
-  // Visitor Actions
+  // ✅ Visitor Actions
   return (
     <div className="flex flex-wrap gap-2 mt-4">
       <button
