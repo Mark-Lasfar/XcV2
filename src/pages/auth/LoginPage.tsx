@@ -6,7 +6,7 @@ import { PasswordInput } from '../../components/auth/PasswordInput';
 import { SocialLogin } from '../../components/auth/SocialLogin';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
-import { Mail } from 'lucide-react';
+import { Mail, AlertCircle } from 'lucide-react';
 import { showToast } from '../../components/common/Toast';
 
 const LoginPage: React.FC = () => {
@@ -21,20 +21,25 @@ const LoginPage: React.FC = () => {
   const [resetOtp, setResetOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
 
   const { login, forgotPassword, resetPassword, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ✅ توجيه المستخدم إذا كان مسجل الدخول
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/profile/me');
+      const redirect = location.state?.from || '/profile/me';
+      navigate(redirect);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, location]);
 
+  // ✅ معالجة تسجيل الدخول
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNetworkError(false);
     setLoading(true);
 
     try {
@@ -50,13 +55,29 @@ const LoginPage: React.FC = () => {
       const redirect = location.state?.from || '/profile/me';
       navigate(redirect);
     } catch (err: any) {
-      setError(err.message || 'Invalid email or password');
-      showToast(err.message || 'Login failed', 'error');
+      console.error('Login error:', err);
+      
+      // ✅ معالجة أخطاء الشبكة
+      if (err.message?.includes('Network Error') || err.code === 'ERR_NETWORK' || err.message?.includes('ERR_FAILED')) {
+        setNetworkError(true);
+        setError('Network error. Please check your connection and try again.');
+        showToast('Network error. Please check your connection.', 'error');
+      } else if (err.response?.status === 401) {
+        setError('Invalid email or password');
+        showToast('Invalid email or password', 'error');
+      } else if (err.response?.data?.error) {
+        setError(err.response.data.error);
+        showToast(err.response.data.error, 'error');
+      } else {
+        setError(err.message || 'Login failed. Please try again.');
+        showToast(err.message || 'Login failed', 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // ✅ معالجة نسيت كلمة المرور
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -68,6 +89,7 @@ const LoginPage: React.FC = () => {
       setShowForgotPassword(false);
       setShowResetPassword(true);
     } catch (err: any) {
+      console.error('Forgot password error:', err);
       setError(err.message || 'Failed to send reset code');
       showToast(err.message || 'Failed to send reset code', 'error');
     } finally {
@@ -75,6 +97,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  // ✅ معالجة إعادة تعيين كلمة المرور
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -90,6 +113,7 @@ const LoginPage: React.FC = () => {
       setNewPassword('');
       navigate('/login');
     } catch (err: any) {
+      console.error('Reset password error:', err);
       setError(err.message || 'Failed to reset password');
       showToast(err.message || 'Failed to reset password', 'error');
     } finally {
@@ -97,7 +121,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  // Social Login Success Handler
+  // ✅ معالجة Social Login الناجح
   const handleSocialLoginSuccess = (provider: string, data: any) => {
     console.log(`Logged in with ${provider}:`, data);
     showToast(`Successfully logged in with ${provider}!`, 'success');
@@ -109,6 +133,7 @@ const LoginPage: React.FC = () => {
     showToast(error, 'error');
   };
 
+  // ✅ عرض نافذة إعادة تعيين كلمة المرور
   if (showResetPassword) {
     return (
       <AuthCard title="Reset Password" subtitle="Enter the code sent to your email">
@@ -156,7 +181,12 @@ const LoginPage: React.FC = () => {
             disabled={resetLoading}
           />
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-500">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <Button
             type="submit"
@@ -185,6 +215,7 @@ const LoginPage: React.FC = () => {
     );
   }
 
+  // ✅ عرض نافذة نسيت كلمة المرور
   if (showForgotPassword) {
     return (
       <AuthCard title="Forgot Password" subtitle="Enter your email to receive a reset code">
@@ -200,7 +231,12 @@ const LoginPage: React.FC = () => {
             disabled={forgotLoading}
           />
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-500">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
 
           <Button
             type="submit"
@@ -228,6 +264,7 @@ const LoginPage: React.FC = () => {
     );
   }
 
+  // ✅ عرض صفحة تسجيل الدخول الرئيسية
   return (
     <AuthCard title="Welcome Back" subtitle="Sign in to your account">
       <form onSubmit={handleLogin} className="space-y-4">
@@ -265,7 +302,12 @@ const LoginPage: React.FC = () => {
           </button>
         </div>
 
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && (
+          <div className={`flex items-center gap-2 text-sm ${networkError ? 'text-yellow-500' : 'text-red-500'}`}>
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
+          </div>
+        )}
 
         <Button
           type="submit"

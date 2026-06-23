@@ -10,38 +10,22 @@ import {
 import { User } from '../types/user';
 
 export const authService = {
-  // ✅ Login - يستخدم publicApi (بدون withCredentials) عشان CORS
+  // ✅ Login - يستخدم publicApi
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await publicApi.post('/api/login', credentials);
-    const data = response.data;
-    if (data.user) {
-      if (!data.user.createdAt) data.user.createdAt = new Date().toISOString();
-      if (!data.user.updatedAt) data.user.updatedAt = new Date().toISOString();
-    }
-    return data;
+    return response.data;
   },
 
-  // ✅ Register - يستخدم publicApi (بدون withCredentials) عشان CORS
+  // ✅ Register - يستخدم publicApi
   async register(data: RegisterData): Promise<AuthResponse> {
     const response = await publicApi.post('/api/register', data);
-    const result = response.data;
-    if (result.user) {
-      if (!result.user.createdAt) result.user.createdAt = new Date().toISOString();
-      if (!result.user.updatedAt) result.user.updatedAt = new Date().toISOString();
-    }
-    return result;
+    return response.data;
   },
 
-  // ✅ Verify Email - يستخدم api (مع withCredentials)
+  // ✅ Verify Email - يستخدم publicApi
   async verifyEmail(data: VerifyData): Promise<AuthResponse> {
-    const response = await api.post('/api/verify-email', data);
-    const result = response.data;
-    if (result.user) {
-      if (!result.user.createdAt) result.user.createdAt = new Date().toISOString();
-      if (!result.user.updatedAt) result.user.updatedAt = new Date().toISOString();
-      result.user.isVerified = true;
-    }
-    return result;
+    const response = await publicApi.post('/api/verify-email', data);
+    return response.data;
   },
 
   // ✅ Resend Verification - يستخدم publicApi
@@ -59,28 +43,33 @@ export const authService = {
     await publicApi.post('/api/reset-password', data);
   },
 
-  // ✅ Logout - يستخدم api (مع withCredentials)
+  // ✅ Logout - يستخدم api (مع التوكن)
   async logout(): Promise<void> {
-    await api.post('/api/logout');
+    const token = localStorage.getItem('userToken');
+    if (token) {
+      await api.post('/api/logout', {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
   },
 
-  // ✅ Refresh Token - يستخدم publicApi (بدون withCredentials)
+  // ✅ Refresh Token - يستخدم publicApi
   async refreshToken(refreshToken: string): Promise<{ token: string }> {
     const response = await publicApi.post('/api/refresh-token', { refreshToken });
     return response.data;
   },
 
-  // ✅ Verify Token - يستخدم api (مع withCredentials)
+  // ✅ Verify Token - يستخدم publicApi (بدون withCredentials)
   async verifyToken(): Promise<{ user: User }> {
-    const response = await api.get('/api/verify-token');
-    const data = response.data;
-    if (data.user) {
-      if (!data.user.createdAt) data.user.createdAt = new Date().toISOString();
-      if (!data.user.updatedAt) data.user.updatedAt = new Date().toISOString();
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('No token found');
     }
-    return data;
+    const response = await publicApi.get('/api/verify-token', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
   },
 };
 
-// ✅ Export الـ authService كـ default للتوافق
 export default authService;

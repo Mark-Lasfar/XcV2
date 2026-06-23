@@ -8,16 +8,15 @@ export const publicApi = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // ✅ بدون withCredentials عشان CORS ما يمنعش
 });
 
-// ✅ إنشاء Axios instance للطلبات المحمية (مع withCredentials)
+// ✅ إنشاء Axios instance للطلبات المحمية (بدون withCredentials)
 export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // ✅ للطلبات اللي محتاجة Cookies/Session
+  // ❌ إزالة withCredentials: true عشان CORS
 });
 
 // ✅ Interceptor لإضافة التوكن للطلبات المحمية
@@ -43,7 +42,6 @@ api.interceptors.response.use(
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) throw new Error('No refresh token');
         
-        // ✅ استخدام publicApi بدلاً من api عشان ما يدخلش في لوب لا نهائية
         const response = await publicApi.post('/api/refresh-token', { refreshToken });
         const { accessToken } = response.data;
         
@@ -61,5 +59,4 @@ api.interceptors.response.use(
   }
 );
 
-// ✅ Export الـ publicApi كـ default للتوافق
 export default publicApi;

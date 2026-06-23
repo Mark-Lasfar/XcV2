@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { api } from '../services/api';
+import { publicApi } from '../services/api';
 import { authService } from '../services/authService';
 import { User } from '../types/user';
 import { LoginCredentials, RegisterData, AuthResponse } from '../types/auth';
@@ -9,8 +9,8 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (email: string, password: string) => Promise<any>;
-  register: (data: RegisterData) => Promise<any>;
+  login: (email: string, password: string) => Promise<{ success: boolean; requiresVerification?: boolean }>;
+  register: (data: RegisterData) => Promise<{ success: boolean; requiresVerification?: boolean }>;
   verifyEmail: (email: string, otp: string) => Promise<any>;
   resendVerification: (email: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       username: userData.username || '',
       email: userData.email || '',
       nickname: userData.nickname || userData.profile?.nickname || userData.username,
-      avatar: userData.avatar || userData.profile?.avatar || '',
+      avatar: userData.avatar || userData.profile?.avatar || '/assets/img/default-avatar.png',
       jobTitle: userData.jobTitle || userData.profile?.jobTitle || '',
       bio: userData.bio || userData.profile?.bio || '',
       profile: userData.profile || {},
@@ -49,8 +49,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
+  // ✅ تحميل المستخدم
   const loadUser = useCallback(async () => {
-    if (!token) {
+    const currentToken = localStorage.getItem('userToken');
+    if (!currentToken) {
       setLoading(false);
       return;
     }
@@ -60,28 +62,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.user) {
         const userData = normalizeUser(response.user);
         setUser(userData);
+        setToken(currentToken);
       }
     } catch (error) {
       console.error('Error loading user:', error);
       localStorage.removeItem('userToken');
       localStorage.removeItem('refreshToken');
       setToken(null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     loadUser();
   }, [loadUser]);
 
+  // ✅ تسجيل الدخول
   const login = async (email: string, password: string) => {
     try {
       const response = await authService.login({ email, password });
       
-      // ✅ التحقق من وجود token
+      // ✅ إذا كان الإيميل غير مفعل
+      if (response.requiresVerification) {
+        return { success: false, requiresVerification: true };
+      }
+
+      // ✅ إذا كان هناك توكن
       if (response.token) {
-        // ✅ حفظ التوكن
         localStorage.setItem('userToken', response.token);
         if (response.refreshToken) {
           localStorage.setItem('refreshToken', response.refreshToken);
@@ -89,21 +98,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(response.token);
         
         // ✅ جلب بيانات المستخدم
-        try {
-          const userResponse = await authService.verifyToken();
-          if (userResponse.user) {
-            const userData = normalizeUser(userResponse.user);
-            setUser(userData);
+        if (response.user) {
+          const userData = normalizeUser(response.user);
+          setUser(userData);
+        } else {
+          // ✅ إذا لم تكن بيانات المستخدم موجودة، جلبها
+          try {
+            const userResponse = await authService.verifyToken();
+            if (userResponse.user) {
+              const userData = normalizeUser(userResponse.user);
+              setUser(userData);
+            }
+          } catch (userError) {
+            console.error('Error fetching user after login:', userError);
           }
-        } catch (userError) {
-          console.error('Error fetching user after login:', userError);
         }
         
-        return { success: true, requiresVerification: false };
+        return { success: true };
       }
       
-      return { success: false, requiresVerification: response.requiresVerification || false };
+      return { success: false };
     } catch (error: any) {
+      // ✅ معالجة خطأ 403 (إيميل غير مفعل)
       if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
         return { success: false, requiresVerification: true };
       }
@@ -111,9 +127,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ✅ التسجيل
   const register = async (data: RegisterData) => {
     try {
       const response = await authService.register(data);
+      
+      if (response.requiresVerification) {
+        return { success: true, requiresVerification: true };
+      }
       
       if (response.token) {
         localStorage.setItem('userToken', response.token);
@@ -127,11 +148,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(userData);
         }
         
-        return { success: true, requiresVerification: false };
+        return { success: true };
       }
       
-      return { success: true, requiresVerification: response.requiresVerification || false };
+      return { success: true };
     } catch (error: any) {
+      // ✅ معالجة خطأ 201 (إيميل غير مفعل)
       if (error.response?.status === 201 && error.response?.data?.requiresVerification) {
         return { success: true, requiresVerification: true };
       }
@@ -139,6 +161,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ✅ التحقق من الإيميل
   const verifyEmail = async (email: string, otp: string) => {
     const response = await authService.verifyEmail({ email, otp });
     
@@ -161,26 +184,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return response;
   };
 
+  // ✅ إعادة إرسال رمز التحقق
   const resendVerification = async (email: string) => {
     await authService.resendVerification(email);
   };
 
+  // ✅ نسيت كلمة المرور
   const forgotPassword = async (email: string) => {
     await authService.forgotPassword({ email });
   };
 
+  // ✅ إعادة تعيين كلمة المرور
   const resetPassword = async (email: string, otp: string, newPassword: string) => {
     await authService.resetPassword({ email, otp, newPassword });
   };
 
+  // ✅ تسجيل الخروج
   const logout = () => {
     localStorage.removeItem('userToken');
     localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
+    // محاولة تسجيل الخروج من السيرفر (غير ضروري)
     authService.logout().catch(console.error);
   };
 
+  // ✅ تجديد التوكن
   const refreshToken = async (): Promise<string | null> => {
     const refresh = localStorage.getItem('refreshToken');
     if (!refresh) return null;

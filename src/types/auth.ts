@@ -12,12 +12,13 @@ export interface RegisterData {
   nickname?: string;
 }
 
-// ✅ تحديث AuthResponse لاستخدام نوع User بالكامل
 export interface AuthResponse {
-  token: string;
-  refreshToken: string;
-  user: User;  // ✅ استخدام نوع User الكامل بدلاً من كائن جزئي
+  token?: string;
+  refreshToken?: string;
+  user?: User;
   requiresVerification?: boolean;
+  error?: string;
+  message?: string;
 }
 
 export interface VerifyData {
@@ -38,4 +39,12 @@ export interface ResetPasswordData {
 export interface AuthError {
   error: string;
   requiresVerification?: boolean;
+  email?: string;
+}
+
+// ✅ نوع للـ Social Login
+export interface SocialLoginData {
+  provider: string;
+  email?: string;
+  token?: string;
 }
