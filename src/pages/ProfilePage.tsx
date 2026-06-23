@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -50,6 +50,43 @@ import { ProfileSkeleton, SectionSkeleton } from '../components/common/Skeleton'
 // Types
 import { Section } from '../types/section';
 
+// ✅ Error Boundary component for sections
+class SectionErrorBoundary extends React.Component<{ children: React.ReactNode; sectionName: string }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode; sectionName: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error(`Error in section ${this.props.sectionName}:`, error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
+          <div className="card-content text-center py-4">
+            <p className="text-red-600 dark:text-red-400 text-sm">
+              ⚠️ Could not load "{this.props.sectionName}" section
+            </p>
+            <button
+              onClick={() => this.setState({ hasError: false })}
+              className="mt-2 px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const ProfilePage: React.FC = () => {
   // ============================================
   // 1. HOOKS & CONTEXT
@@ -97,11 +134,10 @@ const ProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'activity' | 'about'>('profile');
-  const [refreshKey, setRefreshKey] = useState(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // 3. SECTION MAP (بدون useMemo لتجنب error #310)
+  // 3. SECTION MAP
   // ============================================
   const sectionMap: Record<string, React.ComponentType<any>> = {
     about: AboutSection,
@@ -115,10 +151,10 @@ const ProfilePage: React.FC = () => {
   };
 
   // ============================================
-  // 4. CALLBACK FUNCTIONS
+  // 4. CALLBACK FUNCTIONS (useCallback)
   // ============================================
 
-  // 4.1 Render Section (مُحسّن)
+  // 4.1 Render Section
   const renderSection = useCallback(
     (section: Section) => {
       const SectionComponent = sectionMap[section.type] || CustomSection;
@@ -129,106 +165,80 @@ const ProfilePage: React.FC = () => {
       };
 
       const handleDelete = () => {
-        if (window.confirm(`Are you sure you want to delete "${section.name}" section?`)) {
+        if (window.confirm(`Are you sure you want to delete the "${section.name}" section?`)) {
           removeSectionFromLayout(section.id);
           deleteProfileSection(section.id);
           showToast('Section deleted successfully!', 'success');
         }
       };
 
-      if (section.type === 'custom') {
-        return (
-          <CustomSection
-            key={section.id}
-            section={section}
-            isOwner={isOwner}
-            editMode={editMode}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
-        );
-      }
+      const sectionContent = (
+        <SectionErrorBoundary sectionName={section.name}>
+          {section.type === 'custom' ? (
+            <CustomSection
+              key={section.id}
+              section={section}
+              isOwner={isOwner}
+              editMode={editMode}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+            />
+          ) : (
+            (() => {
+              const commonProps = {
+                isOwner,
+                editMode,
+                onTitleChange: (title: string) => handleUpdate({ name: title }),
+              };
 
-      const commonProps = {
-        isOwner,
-        editMode,
-        onTitleChange: (title: string) => handleUpdate({ name: title }),
-      };
+              const sectionData = {
+                about: {
+                  bio: section.content?.text || profile?.bio || '',
+                  onUpdate: (bio: string) => handleUpdate({ content: { text: bio } }),
+                },
+                experience: {
+                  experiences: section.content?.items || profile?.experience || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+                education: {
+                  educations: section.content?.items || profile?.education || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+                certificates: {
+                  certificates: section.content?.items || profile?.certificates || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+                skills: {
+                  skills: section.content?.items || profile?.skills || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+                projects: {
+                  projects: section.content?.items || profile?.projects || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+                interests: {
+                  interests: section.content?.items || profile?.interests || [],
+                  onUpdate: (items: any[]) => handleUpdate({ content: { items } }),
+                },
+              };
 
-      switch (section.type) {
-        case 'about':
-          return (
-            <AboutSection
-              key={section.id}
-              bio={section.content?.text || profile?.bio || ''}
-              onUpdate={(bio) => handleUpdate({ content: { text: bio } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'experience':
-          return (
-            <ExperienceSection
-              key={section.id}
-              experiences={section.content?.items || profile?.experience || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'education':
-          return (
-            <EducationSection
-              key={section.id}
-              educations={section.content?.items || profile?.education || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'certificates':
-          return (
-            <CertificatesSection
-              key={section.id}
-              certificates={section.content?.items || profile?.certificates || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'skills':
-          return (
-            <SkillsSection
-              key={section.id}
-              skills={section.content?.items || profile?.skills || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'projects':
-          return (
-            <ProjectsSection
-              key={section.id}
-              projects={section.content?.items || profile?.projects || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        case 'interests':
-          return (
-            <InterestsSection
-              key={section.id}
-              interests={section.content?.items || profile?.interests || []}
-              onUpdate={(items) => handleUpdate({ content: { items } })}
-              title={section.name}
-              {...commonProps}
-            />
-          );
-        default:
-          return null;
-      }
+              const data = sectionData[section.type as keyof typeof sectionData];
+              if (!data) return null;
+
+              return (
+                <SectionComponent
+                  key={section.id}
+                  title={section.name}
+                  {...commonProps}
+                  {...data}
+                />
+              );
+            })()
+          )}
+        </SectionErrorBoundary>
+      );
+
+      return sectionContent;
     },
     [
       isOwner,
@@ -293,17 +303,8 @@ const ProfilePage: React.FC = () => {
     [updateSectionInLayout, updateProfileSection]
   );
 
-  // 4.5 Refresh Profile
-  const refreshProfile = useCallback(async () => {
-    if (profile?.nickname || profile?.username) {
-      const targetNickname = profile.nickname || profile.username;
-      await fetchProfile(targetNickname);
-      setRefreshKey(prev => prev + 1);
-    }
-  }, [profile, fetchProfile]);
-
   // ============================================
-  // 5. EFFECTS
+  // 5. EFFECTS (useEffect)
   // ============================================
 
   // 5.1 Load Profile
@@ -338,7 +339,7 @@ const ProfilePage: React.FC = () => {
               setSections(normalizedSections);
             }
             if (nickname !== targetNickname && nickname !== 'me') {
-              navigate(`/profile/${targetNickname}`, { replace: true });
+              navigate(`/profile/${encodeURIComponent(targetNickname)}`, { replace: true });
             }
           }
         }
@@ -373,7 +374,7 @@ const ProfilePage: React.FC = () => {
       socket.on('profile-updated', (updatedData) => {
         if (updatedData.id === profileId || updatedData._id === profileId) {
           showToast('Profile updated in real-time', 'info');
-          refreshProfile();
+          fetchProfile(profile.nickname || profile.username);
         }
       });
 
@@ -389,45 +390,31 @@ const ProfilePage: React.FC = () => {
         socket.emit('leave-profile', { profileId });
       };
     }
-  }, [socket, isConnected, profile, refreshProfile, loadNotifications]);
+  }, [socket, isConnected, profile, fetchProfile, loadNotifications]);
 
   // 5.3 Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+E or Cmd+E to toggle edit mode
+      // Ctrl+E to toggle edit mode
       if ((e.ctrlKey || e.metaKey) && e.key === 'e' && isOwner) {
         e.preventDefault();
         toggleEditMode();
-        showToast(editMode ? 'Edit mode disabled' : 'Edit mode enabled', 'info');
       }
       // Escape to exit edit mode
       if (e.key === 'Escape' && editMode) {
         toggleEditMode();
-        showToast('Edit mode disabled', 'info');
       }
-      // Ctrl+S or Cmd+S to save layout
+      // Ctrl+S to save layout
       if ((e.ctrlKey || e.metaKey) && e.key === 's' && editMode) {
         e.preventDefault();
         saveLayout();
-        showToast('Layout saved successfully!', 'success');
+        showToast('Layout saved!', 'success');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOwner, editMode, toggleEditMode, saveLayout]);
-
-  // 5.4 Auto-refresh on visibility change
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && profile) {
-        refreshProfile();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [profile, refreshProfile]);
 
   // ============================================
   // 6. LOADING STATE
@@ -492,26 +479,23 @@ const ProfilePage: React.FC = () => {
   }
 
   // ============================================
-  // 8. FILTER SECTIONS (باستخدام useMemo بشكل صحيح)
+  // 8. FILTER SECTIONS
   // ============================================
-  const mainSections = useMemo(
-    () => sections.filter((s) => s.column === 'main' && s.visible !== false),
-    [sections]
+  const mainSections = sections.filter(
+    (s) => s.column === 'main' && s.visible !== false
   );
-  const leftSections = useMemo(
-    () => sections.filter((s) => s.column === 'left' && s.visible !== false),
-    [sections]
+  const leftSections = sections.filter(
+    (s) => s.column === 'left' && s.visible !== false
   );
-  const rightSections = useMemo(
-    () => sections.filter((s) => s.column === 'right' && s.visible !== false),
-    [sections]
+  const rightSections = sections.filter(
+    (s) => s.column === 'right' && s.visible !== false
   );
 
   // ============================================
-  // 9. RENDER (مع إضافة مفتاح فريد للـ React.Fragment)
+  // 9. RENDER
   // ============================================
   return (
-    <React.Fragment key={refreshKey}>
+    <>
       <Helmet>
         <title>{profile.nickname || profile.username} | Professional Profile</title>
         <meta
@@ -616,13 +600,6 @@ const ProfilePage: React.FC = () => {
                   + Add Section
                 </button>
                 <button
-                  onClick={saveLayout}
-                  className="px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-                  title="Save Layout (Ctrl+S)"
-                >
-                  💾 Save Layout
-                </button>
-                <button
                   onClick={toggleEditMode}
                   className="px-3 py-1 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
                 >
@@ -648,23 +625,25 @@ const ProfilePage: React.FC = () => {
                   onUpdate={updateProfile}
                 />
 
-                <DragDropContext
-                  sections={leftSections}
-                  column="left"
-                  onReorder={(newSections: Section[]) => setSections(newSections)}
-                  editMode={editMode}
-                >
-                  {leftSections.map((section, index) => (
-                    <Draggable
-                      key={section.id}
-                      id={section.id}
-                      index={index}
-                      disabled={!editMode}
-                    >
-                      {renderSection(section)}
-                    </Draggable>
-                  ))}
-                </DragDropContext>
+                {leftSections.length > 0 && (
+                  <DragDropContext
+                    sections={leftSections}
+                    column="left"
+                    onReorder={(newSections: Section[]) => setSections(newSections)}
+                    editMode={editMode}
+                  >
+                    {leftSections.map((section, index) => (
+                      <Draggable
+                        key={section.id}
+                        id={section.id}
+                        index={index}
+                        disabled={!editMode}
+                      >
+                        {renderSection(section)}
+                      </Draggable>
+                    ))}
+                  </DragDropContext>
+                )}
               </div>
             )}
 
@@ -674,25 +653,27 @@ const ProfilePage: React.FC = () => {
               activeTab === 'about' ||
               !isMobile) && (
               <div className="lg:col-span-6 space-y-4">
-                <DragDropContext
-                  sections={mainSections}
-                  column="main"
-                  onReorder={(newSections: Section[]) => setSections(newSections)}
-                  editMode={editMode}
-                >
-                  {mainSections.map((section, index) => (
-                    <Draggable
-                      key={section.id}
-                      id={section.id}
-                      index={index}
-                      disabled={!editMode}
-                    >
-                      {renderSection(section)}
-                    </Draggable>
-                  ))}
-                </DragDropContext>
+                {mainSections.length > 0 && (
+                  <DragDropContext
+                    sections={mainSections}
+                    column="main"
+                    onReorder={(newSections: Section[]) => setSections(newSections)}
+                    editMode={editMode}
+                  >
+                    {mainSections.map((section, index) => (
+                      <Draggable
+                        key={section.id}
+                        id={section.id}
+                        index={index}
+                        disabled={!editMode}
+                      >
+                        {renderSection(section)}
+                      </Draggable>
+                    ))}
+                  </DragDropContext>
+                )}
 
-                {/* ✅ Activity Feed - يستخدم _id (ObjectId) */}
+                {/* ✅ Activity Feed - uses userId (ObjectId) */}
                 {(activeTab === 'activity' || !isMobile) && (
                   <ActivityFeed
                     userId={profile._id || profile.id}
@@ -701,7 +682,7 @@ const ProfilePage: React.FC = () => {
                   />
                 )}
 
-                {/* ✅ Contribution Graph - يستخدم _id (ObjectId) */}
+                {/* ✅ Contribution Graph - uses userId (ObjectId) */}
                 {(activeTab === 'about' || !isMobile) && (
                   <ContributionGraph
                     userId={profile._id || profile.id}
@@ -714,23 +695,25 @@ const ProfilePage: React.FC = () => {
             {/* Right Sidebar */}
             {(activeTab === 'profile' || !isMobile) && (
               <div className="lg:col-span-3 space-y-4">
-                <DragDropContext
-                  sections={rightSections}
-                  column="right"
-                  onReorder={(newSections: Section[]) => setSections(newSections)}
-                  editMode={editMode}
-                >
-                  {rightSections.map((section, index) => (
-                    <Draggable
-                      key={section.id}
-                      id={section.id}
-                      index={index}
-                      disabled={!editMode}
-                    >
-                      {renderSection(section)}
-                    </Draggable>
-                  ))}
-                </DragDropContext>
+                {rightSections.length > 0 && (
+                  <DragDropContext
+                    sections={rightSections}
+                    column="right"
+                    onReorder={(newSections: Section[]) => setSections(newSections)}
+                    editMode={editMode}
+                  >
+                    {rightSections.map((section, index) => (
+                      <Draggable
+                        key={section.id}
+                        id={section.id}
+                        index={index}
+                        disabled={!editMode}
+                      >
+                        {renderSection(section)}
+                      </Draggable>
+                    ))}
+                  </DragDropContext>
+                )}
 
                 {!isMobile && (
                   <>
@@ -803,7 +786,7 @@ const ProfilePage: React.FC = () => {
           />
         )}
       </div>
-    </React.Fragment>
+    </>
   );
 };
 
