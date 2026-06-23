@@ -16,6 +16,59 @@ const objectToArray = <T>(obj: any): T[] => {
   return [];
 };
 
+// ✅ دالة لتطبيع بيانات البروفايل بالكامل (تحويل كل الحقول من Object إلى Array)
+const normalizeProfileData = (data: any): ProfileData => {
+  // إذا كانت البيانات فارغة أو غير موجودة
+  if (!data) return data;
+  
+  // إذا كان هناك حقل profile (هيكل قديم)، استخدمه
+  const profileData = data.profile || data;
+  
+  return {
+    ...data,
+    // ✅ تحويل جميع الحقول من Object إلى Array
+    skills: objectToArray(profileData.skills),
+    experience: objectToArray(profileData.experience),
+    education: objectToArray(profileData.education),
+    certificates: objectToArray(profileData.certificates),
+    projects: objectToArray(profileData.projects),
+    interests: objectToArray(profileData.interests),
+    // ✅ إذا كانت sections موجودة، طبعها
+    sections: profileData.sections ? normalizeSections(profileData.sections) : [],
+    // ✅ تأكد من وجود _id
+    _id: profileData._id || data._id,
+    id: profileData._id || data._id || profileData.id || data.id,
+    // ✅ تأكد من وجود username و nickname
+    username: data.username || profileData.username,
+    nickname: profileData.nickname || data.nickname,
+    // ✅ تأكد من وجود bio
+    bio: profileData.bio || data.bio,
+    // ✅ تأكد من وجود jobTitle
+    jobTitle: profileData.jobTitle || data.jobTitle,
+    // ✅ تأكد من وجود avatar
+    avatar: profileData.avatar || data.avatar,
+    // ✅ تأكد من وجود coverImage
+    coverImage: profileData.coverImage || data.coverImage,
+    // ✅ تأكد من وجود socialLinks
+    socialLinks: profileData.socialLinks || data.socialLinks || {},
+    // ✅ تأكد من وجود sectionVisibility
+    sectionVisibility: profileData.sectionVisibility || data.sectionVisibility || {},
+    // ✅ تأكد من وجود sectionNames
+    sectionNames: profileData.sectionNames || data.sectionNames || {},
+    // ✅ تأكد من وجود sectionStyleSettings
+    sectionStyleSettings: profileData.sectionStyleSettings || data.sectionStyleSettings || {},
+    // ✅ تأكد من وجود stats
+    stats: profileData.stats || data.stats || { posts: 0, followers: 0, following: 0 },
+    // ✅ تأكد من وجود isPublic
+    isPublic: profileData.isPublic !== undefined ? profileData.isPublic : (data.isPublic !== undefined ? data.isPublic : true),
+    // ✅ تأكد من وجود aiBot
+    aiBot: profileData.aiBot || data.aiBot || { enabled: false, provider: 'XCV' },
+    // ✅ تأكد من وجود createdAt و updatedAt
+    createdAt: profileData.createdAt || data.createdAt || new Date().toISOString(),
+    updatedAt: profileData.updatedAt || data.updatedAt || new Date().toISOString(),
+  };
+};
+
 export const useProfile = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -173,23 +226,37 @@ export const useProfile = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await profileService.getProfile(nickname);
+      const rawData = await profileService.getProfile(nickname);
+      
+      // ✅ تطبيع البيانات بالكامل (تحويل Objects إلى Arrays)
+      const normalizedData = normalizeProfileData(rawData);
       
       // ✅ إذا كانت الأقسام موجودة، طبعها
-      if (data.sections && data.sections.length > 0) {
-        data.sections = normalizeSections(data.sections);
+      if (normalizedData.sections && normalizedData.sections.length > 0) {
+        normalizedData.sections = normalizeSections(normalizedData.sections);
       } else {
         // ✅ إذا مفيش أقسام، استخدم الأقسام الافتراضية مع تحويل Objects إلى Arrays
-        data.sections = getDefaultSections(data);
+        normalizedData.sections = getDefaultSections(normalizedData);
       }
       
-      setProfile(data);
+      // ✅ تأكد من أن جميع الحقول التي تحتاجها الأقسام موجودة
+      console.log('✅ Profile loaded:', normalizedData);
+      console.log('📊 Skills:', normalizedData.skills);
+      console.log('📊 Experience:', normalizedData.experience);
+      console.log('📊 Education:', normalizedData.education);
+      console.log('📊 Certificates:', normalizedData.certificates);
+      console.log('📊 Projects:', normalizedData.projects);
+      console.log('📊 Interests:', normalizedData.interests);
+      console.log('📊 Sections:', normalizedData.sections);
+      
+      setProfile(normalizedData);
       
       const userNickname = user?.profile?.nickname || user?.username;
       setIsOwner(userNickname?.toLowerCase() === nickname?.toLowerCase());
       
-      return data;
+      return normalizedData;
     } catch (err: any) {
+      console.error('❌ Error fetching profile:', err);
       setError(err.message || 'Failed to load profile');
       return null;
     } finally {
@@ -201,8 +268,10 @@ export const useProfile = () => {
     if (!profile || !isOwner) return null;
     try {
       const updated = await profileService.updateProfile(data);
-      setProfile(updated);
-      return updated;
+      // ✅ تطبيع البيانات بعد التحديث
+      const normalized = normalizeProfileData(updated);
+      setProfile(normalized);
+      return normalized;
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
       return null;
