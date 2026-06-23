@@ -65,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(currentToken);
         console.log('✅ User loaded from token:', userData.username);
       } else {
-        // ✅ إذا لم يتم العثور على مستخدم، قم بتنظيف التوكنات
         localStorage.removeItem('userToken');
         localStorage.removeItem('refreshToken');
         setToken(null);
@@ -86,18 +85,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, [loadUser]);
 
-  // ✅ تسجيل الدخول
+  // ✅ تسجيل الدخول - الإصلاح النهائي
   const login = async (email: string, password: string) => {
     try {
+      console.log('🔐 AuthContext.login: Starting...');
       const response = await authService.login({ email, password });
+      console.log('🔐 AuthContext.login: Response received', response);
       
       // ✅ إذا كان الإيميل غير مفعل
       if (response.requiresVerification) {
+        console.log('🔐 AuthContext.login: Requires verification');
         return { success: false, requiresVerification: true };
       }
 
       // ✅ إذا كان هناك توكن
       if (response.token) {
+        console.log('🔐 AuthContext.login: Token received, saving...');
         localStorage.setItem('userToken', response.token);
         if (response.refreshToken) {
           localStorage.setItem('refreshToken', response.refreshToken);
@@ -107,11 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // ✅ جلب بيانات المستخدم
         let userData = null;
         if (response.user) {
+          console.log('🔐 AuthContext.login: User from response:', response.user);
           userData = normalizeUser(response.user);
         } else {
           // ✅ إذا لم تكن بيانات المستخدم موجودة، جلبها
           try {
+            console.log('🔐 AuthContext.login: Fetching user from verify-token...');
             const userResponse = await authService.verifyToken();
+            console.log('🔐 AuthContext.login: verify-token response:', userResponse);
             if (userResponse.user) {
               userData = normalizeUser(userResponse.user);
             }
@@ -121,15 +127,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (userData) {
+          console.log('🔐 AuthContext.login: Setting user:', userData);
           setUser(userData);
-          console.log('✅ User set after login:', userData.username);
+          console.log('🔐 AuthContext.login: User set successfully!');
+        } else {
+          console.error('🔐 AuthContext.login: No user data available!');
         }
         
         return { success: true };
       }
       
+      console.log('🔐 AuthContext.login: No token in response');
       return { success: false };
     } catch (error: any) {
+      console.error('🔐 AuthContext.login: Error:', error);
       // ✅ معالجة خطأ 403 (إيميل غير مفعل)
       if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
         return { success: false, requiresVerification: true };
@@ -164,7 +175,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { success: true };
     } catch (error: any) {
-      // ✅ معالجة خطأ 201 (إيميل غير مفعل)
       if (error.response?.status === 201 && error.response?.data?.requiresVerification) {
         return { success: true, requiresVerification: true };
       }
@@ -216,7 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
-    // محاولة تسجيل الخروج من السيرفر (غير ضروري)
     authService.logout().catch(console.error);
   };
 
@@ -237,12 +246,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // ✅ التحقق من isAuthenticated مع console.log
+  const isAuthenticated = !!user && !!token;
+  console.log('🔐 AuthContext: isAuthenticated =', isAuthenticated, 'user =', user?.username, 'token =', !!token);
+
   return (
     <AuthContext.Provider
       value={{
         user,
         token,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated,
         loading,
         login,
         register,
