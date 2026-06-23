@@ -22,18 +22,22 @@ const LoginPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
   const [networkError, setNetworkError] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
 
-  const { login, forgotPassword, resetPassword, isAuthenticated } = useAuth();
+  const { login, forgotPassword, resetPassword, isAuthenticated, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // ✅ توجيه المستخدم إذا كان مسجل الدخول
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('🔍 Auth state changed:', { isAuthenticated, user, authLoading });
+    
+    if (!authLoading && isAuthenticated && user) {
       const redirect = location.state?.from || '/profile/me';
-      navigate(redirect);
+      console.log('✅ Redirecting to:', redirect);
+      navigate(redirect, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, authLoading, navigate, location]);
 
   // ✅ معالجة تسجيل الدخول
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,19 +47,33 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
+      console.log('🔐 Attempting login...');
       const result = await login(email, password);
+      console.log('📦 Login result:', result);
       
       if (result.requiresVerification) {
         showToast('Please verify your email first!', 'warning');
         navigate(`/verify?email=${encodeURIComponent(email)}`);
+        setLoading(false);
         return;
       }
 
-      showToast('Welcome back!', 'success');
-      const redirect = location.state?.from || '/profile/me';
-      navigate(redirect);
+      if (result.success) {
+        setLoginSuccess(true);
+        showToast('Welcome back!', 'success');
+        // ✅ استخدام setTimeout للتأكد من تحديث حالة المصادقة
+        setTimeout(() => {
+          const redirect = location.state?.from || '/profile/me';
+          console.log('✅ Redirecting after login to:', redirect);
+          navigate(redirect, { replace: true });
+        }, 500);
+      } else {
+        setError('Login failed. Please try again.');
+        showToast('Login failed. Please try again.', 'error');
+        setLoading(false);
+      }
     } catch (err: any) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       
       // ✅ معالجة أخطاء الشبكة
       if (err.message?.includes('Network Error') || err.code === 'ERR_NETWORK' || err.message?.includes('ERR_FAILED')) {
@@ -72,7 +90,6 @@ const LoginPage: React.FC = () => {
         setError(err.message || 'Login failed. Please try again.');
         showToast(err.message || 'Login failed', 'error');
       }
-    } finally {
       setLoading(false);
     }
   };
@@ -125,7 +142,10 @@ const LoginPage: React.FC = () => {
   const handleSocialLoginSuccess = (provider: string, data: any) => {
     console.log(`Logged in with ${provider}:`, data);
     showToast(`Successfully logged in with ${provider}!`, 'success');
-    navigate('/profile/me');
+    // ✅ تأخير التوجيه للتأكد من تحديث الحالة
+    setTimeout(() => {
+      navigate('/profile/me', { replace: true });
+    }, 500);
   };
 
   const handleSocialLoginError = (error: string) => {
@@ -276,7 +296,7 @@ const LoginPage: React.FC = () => {
           label="Email Address"
           icon={<Mail className="w-4 h-4" />}
           required
-          disabled={loading}
+          disabled={loading || loginSuccess}
           autoFocus
         />
 
@@ -286,7 +306,7 @@ const LoginPage: React.FC = () => {
           placeholder="Enter your password"
           label="Password"
           error={error}
-          disabled={loading}
+          disabled={loading || loginSuccess}
         />
 
         <div className="flex justify-end">
@@ -312,10 +332,11 @@ const LoginPage: React.FC = () => {
         <Button
           type="submit"
           loading={loading}
+          disabled={loginSuccess}
           fullWidth
           className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-3"
         >
-          Sign In
+          {loginSuccess ? 'Redirecting...' : 'Sign In'}
         </Button>
 
         <div className="relative my-2">

@@ -63,6 +63,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = normalizeUser(response.user);
         setUser(userData);
         setToken(currentToken);
+        console.log('✅ User loaded from token:', userData.username);
+      } else {
+        // ✅ إذا لم يتم العثور على مستخدم، قم بتنظيف التوكنات
+        localStorage.removeItem('userToken');
+        localStorage.removeItem('refreshToken');
+        setToken(null);
+        setUser(null);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -98,20 +105,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(response.token);
         
         // ✅ جلب بيانات المستخدم
+        let userData = null;
         if (response.user) {
-          const userData = normalizeUser(response.user);
-          setUser(userData);
+          userData = normalizeUser(response.user);
         } else {
           // ✅ إذا لم تكن بيانات المستخدم موجودة، جلبها
           try {
             const userResponse = await authService.verifyToken();
             if (userResponse.user) {
-              const userData = normalizeUser(userResponse.user);
-              setUser(userData);
+              userData = normalizeUser(userResponse.user);
             }
           } catch (userError) {
             console.error('Error fetching user after login:', userError);
           }
+        }
+        
+        if (userData) {
+          setUser(userData);
+          console.log('✅ User set after login:', userData.username);
         }
         
         return { success: true };
