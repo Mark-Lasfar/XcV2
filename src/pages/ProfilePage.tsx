@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -97,12 +97,13 @@ const ProfilePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'activity' | 'about'>('profile');
+  const [refreshKey, setRefreshKey] = useState(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // 3. SECTION MAP
+  // 3. SECTION MAP (مُحسّن مع useMemo)
   // ============================================
-  const sectionMap: Record<string, React.ComponentType<any>> = {
+  const sectionMap = useMemo<Record<string, React.ComponentType<any>>>(() => ({
     about: AboutSection,
     experience: ExperienceSection,
     education: EducationSection,
@@ -111,13 +112,13 @@ const ProfilePage: React.FC = () => {
     projects: ProjectsSection,
     interests: InterestsSection,
     custom: CustomSection,
-  };
+  }), []);
 
   // ============================================
-  // 4. CALLBACK FUNCTIONS (useCallback)
+  // 4. CALLBACK FUNCTIONS
   // ============================================
 
-  // 4.1 Render Section
+  // 4.1 Render Section (مُحسّن)
   const renderSection = useCallback(
     (section: Section) => {
       const SectionComponent = sectionMap[section.type] || CustomSection;
@@ -128,7 +129,7 @@ const ProfilePage: React.FC = () => {
       };
 
       const handleDelete = () => {
-        if (confirm('Are you sure you want to delete this section?')) {
+        if (window.confirm(`Are you sure you want to delete "${section.name}" section?`)) {
           removeSectionFromLayout(section.id);
           deleteProfileSection(section.id);
           showToast('Section deleted successfully!', 'success');
@@ -233,6 +234,7 @@ const ProfilePage: React.FC = () => {
       isOwner,
       editMode,
       profile,
+      sectionMap,
       updateSectionInLayout,
       updateProfileSection,
       removeSectionFromLayout,
@@ -292,8 +294,17 @@ const ProfilePage: React.FC = () => {
     [updateSectionInLayout, updateProfileSection]
   );
 
+  // 4.5 Refresh Profile
+  const refreshProfile = useCallback(async () => {
+    if (profile?.nickname || profile?.username) {
+      const targetNickname = profile.nickname || profile.username;
+      await fetchProfile(targetNickname);
+      setRefreshKey(prev => prev + 1);
+    }
+  }, [profile, fetchProfile]);
+
   // ============================================
-  // 5. EFFECTS (useEffect)
+  // 5. EFFECTS
   // ============================================
 
   // 5.1 Load Profile
@@ -357,17 +368,18 @@ const ProfilePage: React.FC = () => {
   // 5.2 Socket Connection
   useEffect(() => {
     if (socket && isConnected && profile) {
-      socket.emit('join-profile', { profileId: profile.id || profile._id });
+      const profileId = profile.id || profile._id;
+      socket.emit('join-profile', { profileId });
 
       socket.on('profile-updated', (updatedData) => {
-        if (updatedData.id === profile.id || updatedData._id === profile._id) {
+        if (updatedData.id === profileId || updatedData._id === profileId) {
           showToast('Profile updated in real-time', 'info');
-          fetchProfile(profile.nickname || profile.username);
+          refreshProfile();
         }
       });
 
       socket.on('new-interaction', (data) => {
-        if (data.targetUserId === profile.id || data.targetUserId === profile._id) {
+        if (data.targetUserId === profileId) {
           loadNotifications();
         }
       });
@@ -375,34 +387,48 @@ const ProfilePage: React.FC = () => {
       return () => {
         socket.off('profile-updated');
         socket.off('new-interaction');
-        socket.emit('leave-profile', { profileId: profile.id || profile._id });
+        socket.emit('leave-profile', { profileId });
       };
     }
-  }, [socket, isConnected, profile, fetchProfile, loadNotifications]);
+  }, [socket, isConnected, profile, refreshProfile, loadNotifications]);
 
-  // 5.3 Auto-enter Edit Mode
-  useEffect(() => {
-    if (isOwner && !editMode && !isPreviewMode && !isMobile && isProfileLoaded) {
-      // Optional: auto-enter edit mode
-      // toggleEditMode();
-    }
-  }, [isOwner, isMobile, isProfileLoaded, editMode, isPreviewMode]);
-
-  // 5.4 Keyboard Shortcuts
+  // 5.3 Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+E or Cmd+E to toggle edit mode
       if ((e.ctrlKey || e.metaKey) && e.key === 'e' && isOwner) {
         e.preventDefault();
         toggleEditMode();
+        showToast(editMode ? 'Edit mode disabled' : 'Edit mode enabled', 'info');
       }
+      // Escape to exit edit mode
       if (e.key === 'Escape' && editMode) {
         toggleEditMode();
+        showToast('Edit mode disabled', 'info');
+      }
+      // Ctrl+S or Cmd+S to save layout
+      if ((e.ctrlKey || e.metaKey) && e.key === 's' && editMode) {
+        e.preventDefault();
+        saveLayout();
+        showToast('Layout saved successfully!', 'success');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOwner, editMode, toggleEditMode]);
+  }, [isOwner, editMode, toggleEditMode, saveLayout]);
+
+  // 5.4 Auto-refresh on visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && profile) {
+        refreshProfile();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [profile, refreshProfile]);
 
   // ============================================
   // 6. LOADING STATE
@@ -469,14 +495,17 @@ const ProfilePage: React.FC = () => {
   // ============================================
   // 8. FILTER SECTIONS
   // ============================================
-  const mainSections = sections.filter(
-    (s) => s.column === 'main' && s.visible !== false
+  const mainSections = useMemo(
+    () => sections.filter((s) => s.column === 'main' && s.visible !== false),
+    [sections]
   );
-  const leftSections = sections.filter(
-    (s) => s.column === 'left' && s.visible !== false
+  const leftSections = useMemo(
+    () => sections.filter((s) => s.column === 'left' && s.visible !== false),
+    [sections]
   );
-  const rightSections = sections.filter(
-    (s) => s.column === 'right' && s.visible !== false
+  const rightSections = useMemo(
+    () => sections.filter((s) => s.column === 'right' && s.visible !== false),
+    [sections]
   );
 
   // ============================================
@@ -588,6 +617,13 @@ const ProfilePage: React.FC = () => {
                   + Add Section
                 </button>
                 <button
+                  onClick={saveLayout}
+                  className="px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                  title="Save Layout (Ctrl+S)"
+                >
+                  💾 Save Layout
+                </button>
+                <button
                   onClick={toggleEditMode}
                   className="px-3 py-1 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
                 >
@@ -657,7 +693,7 @@ const ProfilePage: React.FC = () => {
                   ))}
                 </DragDropContext>
 
-                {/* ✅ تمرير nickname بدلاً من userId */}
+                {/* ✅ Activity Feed - يستخدم _id (ObjectId) */}
                 {(activeTab === 'activity' || !isMobile) && (
                   <ActivityFeed
                     userId={profile._id || profile.id}
@@ -666,7 +702,7 @@ const ProfilePage: React.FC = () => {
                   />
                 )}
 
-                {/* ✅ تمرير nickname بدلاً من userId */}
+                {/* ✅ Contribution Graph - يستخدم _id (ObjectId) */}
                 {(activeTab === 'about' || !isMobile) && (
                   <ContributionGraph
                     userId={profile._id || profile.id}
@@ -757,7 +793,7 @@ const ProfilePage: React.FC = () => {
             onDelete={() => {
               if (selectedSection !== 'new') {
                 const section = sections.find((s) => s.id === selectedSection);
-                if (section && confirm(`Delete "${section.name}" section?`)) {
+                if (section && window.confirm(`Delete "${section.name}" section?`)) {
                   removeSectionFromLayout(selectedSection);
                   deleteProfileSection(selectedSection);
                   setSelectedSection(null);
