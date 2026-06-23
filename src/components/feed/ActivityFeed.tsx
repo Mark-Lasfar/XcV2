@@ -4,9 +4,9 @@ import { PostCard } from './PostCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useEditMode } from '../../hooks/useEditMode';
 
-// ✅ استخدم userId (ObjectId) وليس nickname
+// ✅ استخدم userId (ObjectId)
 interface ActivityFeedProps {
-  userId: string;  // ✅ ObjectId من البروفايل
+  userId: string;  // ObjectId من البروفايل
   isOwner: boolean;
   editMode: boolean;
 }

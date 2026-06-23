@@ -1,8 +1,6 @@
 import { ProfileData, ProfileUpdateData } from '../types/profile';
 import { Section, SectionVisibility } from '../types/section';
 import { api } from './api';
-
-// ✅ إضافة normalizeSections للاستخدام في الخدمة
 import { normalizeSections } from '../types/section';
 
 export const profileService = {
@@ -144,13 +142,13 @@ export const profileService = {
     await api.post('/api/ratings', { targetUserId: userId, rating, review });
   },
 
-  // ✅ استخدم userId (ObjectId) وليس nickname
+  // ✅ استخدم userId (ObjectId) مباشرة
   async getContributions(userId: string, year?: number): Promise<any> {
     const response = await api.get(`/api/users/${userId}/contributions${year ? `?year=${year}` : ''}`);
     return response.data;
   },
 
-  // ✅ استخدم userId (ObjectId) وليس nickname
+  // ✅ استخدم userId (ObjectId) مباشرة
   async getInteractions(userId: string, page?: number): Promise<any> {
     const response = await api.get(`/api/profile/${userId}/interactions${page ? `?page=${page}` : ''}`);
     return response.data;

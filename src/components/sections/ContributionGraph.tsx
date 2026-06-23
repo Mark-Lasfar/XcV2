@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../services/profileService';
 
-// ✅ استخدم userId (ObjectId) وليس nickname
+// ✅ استخدم userId (ObjectId)
 interface ContributionGraphProps {
-  userId: string;  // ✅ ObjectId من البروفايل
+  userId: string;  // ObjectId من البروفايل
   isOwner: boolean;
   year?: number;
 }
@@ -180,7 +180,7 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
   );
 };
 
-// Helper function for activities modal
+// Helper functions...
 const showActivitiesModal = (date: string, activities: any[]) => {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-[1000]';
