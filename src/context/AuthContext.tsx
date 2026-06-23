@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  // ✅ تحميل المستخدم
+  // ✅ تحميل المستخدم - الإصلاح النهائي
   const loadUser = useCallback(async () => {
     const currentToken = localStorage.getItem('userToken');
     if (!currentToken) {
@@ -59,12 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const response = await authService.verifyToken();
-      if (response.user) {
-        const userData = normalizeUser(response.user);
+      console.log('🔐 loadUser response:', response);
+      
+      // ✅ التحقق من response.valid بدلاً من response.user
+      if (response.valid) {
+        const userData = normalizeUser({
+          _id: response.userId,
+          id: response.userId,
+          username: response.username,
+          isAdmin: response.isAdmin || false,
+          profile: response.profile || {},
+        });
         setUser(userData);
         setToken(currentToken);
         console.log('✅ User loaded from token:', userData.username);
       } else {
+        console.log('❌ Invalid token response, cleaning up...');
         localStorage.removeItem('userToken');
         localStorage.removeItem('refreshToken');
         setToken(null);
@@ -109,17 +119,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         // ✅ جلب بيانات المستخدم
         let userData = null;
+        
+        // ✅ 1. من login response (لو موجود)
         if (response.user) {
           console.log('🔐 AuthContext.login: User from response:', response.user);
           userData = normalizeUser(response.user);
         } else {
-          // ✅ إذا لم تكن بيانات المستخدم موجودة، جلبها
+          // ✅ 2. fallback: verify-token
           try {
             console.log('🔐 AuthContext.login: Fetching user from verify-token...');
             const userResponse = await authService.verifyToken();
             console.log('🔐 AuthContext.login: verify-token response:', userResponse);
-            if (userResponse.user) {
-              userData = normalizeUser(userResponse.user);
+
+            // ✅ التحقق من response.valid بدلاً من response.user
+            if (userResponse.valid) {
+              userData = normalizeUser({
+                _id: userResponse.userId,
+                id: userResponse.userId,
+                username: userResponse.username,
+                isAdmin: userResponse.isAdmin || false,
+                profile: userResponse.profile || {},
+              });
+              console.log('🔐 AuthContext.login: User built from verify-token:', userData);
             }
           } catch (userError) {
             console.error('Error fetching user after login:', userError);

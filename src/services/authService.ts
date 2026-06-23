@@ -9,6 +9,21 @@ import {
 } from '../types/auth';
 import { User } from '../types/user';
 
+// ✅ تعريف نوع الـ response من verify-token (مطابق للباك اند)
+export interface VerifyTokenResponse {
+  valid: boolean;
+  userId: string;
+  username: string;
+  isAdmin: boolean;
+  profile: {
+    nickname?: string;
+    avatar?: string;
+    jobTitle?: string;
+    portfolioName?: string;
+    bio?: string;
+  };
+}
+
 export const authService = {
   // ✅ Login - يستخدم publicApi
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -17,7 +32,6 @@ export const authService = {
       return response.data;
     } catch (error: any) {
       console.error('Login service error:', error);
-      // ✅ إعادة الخطأ كما هو مع الحفاظ على البيانات المهمة
       if (error.response?.data) {
         throw { ...error, response: error.response };
       }
@@ -103,9 +117,7 @@ export const authService = {
       }
     } catch (error: any) {
       console.error('Logout error:', error);
-      // ✅ لا نحتاج إلى رمي الخطأ لأننا نريد تسجيل الخروج محلياً anyway
     } finally {
-      // ✅ تنظيف التوكنات محلياً حتى لو فشل الطلب
       localStorage.removeItem('userToken');
       localStorage.removeItem('refreshToken');
     }
@@ -125,8 +137,8 @@ export const authService = {
     }
   },
 
-  // ✅ Verify Token - يستخدم publicApi (بدون withCredentials)
-  async verifyToken(): Promise<{ user: User }> {
+  // ✅ Verify Token - الإصلاح النهائي (يُعيد النوع الصحيح المطابق للباك اند)
+  async verifyToken(): Promise<VerifyTokenResponse> {
     const token = localStorage.getItem('userToken');
     if (!token) {
       throw new Error('No token found');
@@ -136,11 +148,12 @@ export const authService = {
       const response = await publicApi.get('/api/verify-token', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log('🔐 verifyToken raw response:', response.data);
       return response.data;
     } catch (error: any) {
       console.error('Verify token error:', error);
       
-      // ✅ إذا كان الخطأ 401 أو 403، قم بتنظيف التوكنات
       if (error.response?.status === 401 || error.response?.status === 403) {
         localStorage.removeItem('userToken');
         localStorage.removeItem('refreshToken');
