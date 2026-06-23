@@ -79,7 +79,7 @@ const ProfileCover: React.FC<ProfileCoverProps> = ({
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500">
-          <span className="text-white/20 text-4xl font-bold">MGZon</span>
+          <span className="text-white/20 text-4xl font-bold">XCV</span>
         </div>
       )}
 

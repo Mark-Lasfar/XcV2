@@ -144,13 +144,15 @@ export const profileService = {
     await api.post('/api/ratings', { targetUserId: userId, rating, review });
   },
 
-  async getContributions(userId: string, year?: number): Promise<any> {
-    const response = await api.get(`/api/users/${userId}/contributions${year ? `?year=${year}` : ''}`);
+  // ✅ تم التعديل: استخدم nickname بدلاً من userId
+  async getContributions(nickname: string, year?: number): Promise<any> {
+    const response = await api.get(`/api/users/${encodeURIComponent(nickname)}/contributions${year ? `?year=${year}` : ''}`);
     return response.data;
   },
 
-  async getInteractions(userId: string, page?: number): Promise<any> {
-    const response = await api.get(`/api/profile/${userId}/interactions${page ? `?page=${page}` : ''}`);
+  // ✅ تم التعديل: استخدم nickname بدلاً من userId
+  async getInteractions(nickname: string, page?: number): Promise<any> {
+    const response = await api.get(`/api/profile/${encodeURIComponent(nickname)}/interactions${page ? `?page=${page}` : ''}`);
     return response.data;
   },
 

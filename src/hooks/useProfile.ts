@@ -12,21 +12,164 @@ export const useProfile = () => {
   const [error, setError] = useState<string | null>(null);
   const [isOwner, setIsOwner] = useState(false);
 
+  // ✅ دالة مساعدة لإنشاء الأقسام الافتراضية
+  const getDefaultSections = useCallback((profileData: ProfileData): Section[] => {
+    const sections: Section[] = [];
+
+    // 1. About Section - دائماً موجود
+    sections.push({
+      id: 'about',
+      type: 'about',
+      name: 'About',
+      column: 'main',
+      order: 0,
+      visible: true,
+      content: { text: profileData.bio || 'No about information provided.' }
+    });
+
+    // 2. Skills Section
+    if (profileData.skills && profileData.skills.length > 0) {
+      sections.push({
+        id: 'skills',
+        type: 'skills',
+        name: 'Skills & Expertise',
+        column: 'left',
+        order: 0,
+        visible: true,
+        content: { items: profileData.skills }
+      });
+    }
+
+    // 3. Experience Section
+    if (profileData.experience && profileData.experience.length > 0) {
+      sections.push({
+        id: 'experience',
+        type: 'experience',
+        name: 'Experience',
+        column: 'main',
+        order: 1,
+        visible: true,
+        content: { items: profileData.experience }
+      });
+    }
+
+    // 4. Education Section
+    if (profileData.education && profileData.education.length > 0) {
+      sections.push({
+        id: 'education',
+        type: 'education',
+        name: 'Education',
+        column: 'main',
+        order: 2,
+        visible: true,
+        content: { items: profileData.education }
+      });
+    }
+
+    // 5. Certificates Section
+    if (profileData.certificates && profileData.certificates.length > 0) {
+      sections.push({
+        id: 'certificates',
+        type: 'certificates',
+        name: 'Licenses & Certificates',
+        column: 'right',
+        order: 0,
+        visible: true,
+        content: { items: profileData.certificates }
+      });
+    }
+
+    // 6. Projects Section
+    if (profileData.projects && profileData.projects.length > 0) {
+      sections.push({
+        id: 'projects',
+        type: 'projects',
+        name: 'Projects',
+        column: 'main',
+        order: 3,
+        visible: true,
+        content: { items: profileData.projects }
+      });
+    }
+
+    // 7. Interests Section
+    if (profileData.interests && profileData.interests.length > 0) {
+      sections.push({
+        id: 'interests',
+        type: 'interests',
+        name: 'Interests',
+        column: 'right',
+        order: 1,
+        visible: true,
+        content: { items: profileData.interests }
+      });
+    }
+
+    // 8. Contact Info Section (إذا كان هناك رقم هاتف أو إيميل)
+    if (profileData.phone || profileData.email) {
+      const contactInfo: string[] = [];
+      if (profileData.phone) contactInfo.push(`📱 ${profileData.phone}`);
+      if (profileData.email) contactInfo.push(`✉️ ${profileData.email}`);
+      if (profileData.location) contactInfo.push(`📍 ${profileData.location}`);
+      
+      if (contactInfo.length > 0) {
+        sections.push({
+          id: 'contact-info',
+          type: 'custom',
+          name: 'Contact Info',
+          column: 'left',
+          order: 1,
+          visible: true,
+          content: { 
+            type: 'contact',
+            items: contactInfo 
+          }
+        });
+      }
+    }
+
+    // 9. Social Links Section
+    if (profileData.socialLinks) {
+      const socialLinks = Object.entries(profileData.socialLinks)
+        .filter(([_, value]) => value && value.trim() !== '');
+      
+      if (socialLinks.length > 0) {
+        sections.push({
+          id: 'social-links',
+          type: 'custom',
+          name: 'Social Links',
+          column: 'left',
+          order: 2,
+          visible: true,
+          content: { 
+            type: 'social',
+            items: socialLinks.map(([platform, url]) => ({ platform, url }))
+          }
+        });
+      }
+    }
+
+    return sections;
+  }, []);
+
   const fetchProfile = useCallback(async (nickname: string) => {
     setLoading(true);
     setError(null);
     try {
       const data = await profileService.getProfile(nickname);
       
-      // ✅ تطبيع الأقسام
+      // ✅ تطبيع الأقسام إذا كانت موجودة
       if (data.sections && data.sections.length > 0) {
         data.sections = normalizeSections(data.sections);
+      } else {
+        // ✅ إذا مفيش أقسام، استخدم الأقسام الافتراضية
+        data.sections = getDefaultSections(data);
       }
       
       setProfile(data);
       
       const userNickname = user?.profile?.nickname || user?.username;
-      setIsOwner(userNickname === nickname);
+      setIsOwner(userNickname?.toLowerCase() === nickname?.toLowerCase());
       
       return data;
     } catch (err: any) {
@@ -35,7 +178,7 @@ export const useProfile = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, getDefaultSections]);
 
   const updateProfile = useCallback(async (data: Partial<ProfileData>) => {
     if (!profile || !isOwner) return null;

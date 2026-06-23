@@ -74,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <img src="/assets/img/logo.svg" alt="Logo" className="w-8 h-8" />
-          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">MGZon</span>
+          <span className="text-xl font-bold text-blue-600 dark:text-blue-400">XCV</span>
         </Link>
 
         {/* Desktop Navigation */}

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { profileService } from '../../services/profileService';
 
+// ✅ تغيير من userId إلى nickname
 interface ContributionGraphProps {
-  userId: string;
+  nickname: string;  // ✅ استخدم nickname بدلاً من userId
   isOwner: boolean;
   year?: number;
 }
@@ -26,7 +27,7 @@ interface ContributionData {
 }
 
 const ContributionGraph: React.FC<ContributionGraphProps> = ({
-  userId,
+  nickname,  // ✅ استخدم nickname
   isOwner,
   year = new Date().getFullYear(),
 }) => {
@@ -36,15 +37,23 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
 
   useEffect(() => {
     loadContributions();
-  }, [userId, selectedYear]);
+  }, [nickname, selectedYear]);  // ✅ استخدم nickname
 
   const loadContributions = async () => {
     setLoading(true);
     try {
-      const result = await profileService.getContributions(userId, selectedYear);
-      setData(result);
+      // ✅ استخدم nickname
+      const result = await profileService.getContributions(nickname, selectedYear);
+      
+      // ✅ تأكد من صحة البيانات
+      if (result && result.weeks) {
+        setData(result);
+      } else {
+        setData(null);
+      }
     } catch (error) {
       console.error('Error loading contributions:', error);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -82,7 +91,7 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
     );
   }
 
-  if (!data || data.weeks.length === 0) {
+  if (!data || !data.weeks || data.weeks.length === 0) {
     return (
       <div className="card">
         <div className="card-header">Contribution Graph</div>
@@ -117,7 +126,7 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
         <div className="contribution-graph-container">
           <div className="flex justify-between items-center mb-3">
             <div className="text-sm font-medium dark:text-white">
-              {data.total} contributions in {selectedYear}
+              {data.total || 0} contributions in {selectedYear}
             </div>
             <div className="text-xs text-gray-500 flex items-center gap-1">
               <span>Less</span>
@@ -137,21 +146,20 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
                 className="flex flex-col justify-around text-xs text-gray-500 pr-2"
                 style={{ height: '120px' }}
               >
-                {data.weekDays.map((day) => (
+                {data.weekDays && data.weekDays.map((day) => (
                   <div key={day}>{day}</div>
                 ))}
               </div>
               <div className="flex gap-1">
                 {data.weeks.map((week, weekIndex) => (
                   <div key={weekIndex} className="flex flex-col gap-1">
-                    {week.days.map((day, dayIndex) => (
+                    {week.days && week.days.map((day, dayIndex) => (
                       <div
                         key={dayIndex}
                         className={`w-3 h-3 ${getLevelColor(day.level)} rounded-sm cursor-pointer hover:scale-110 hover:ring-1 hover:ring-blue-500 transition-all`}
                         title={getTooltip(day)}
                         onClick={() => {
                           if (day.activities && day.activities.length > 0) {
-                            // Show activities modal
                             showActivitiesModal(day.date, day.activities);
                           }
                         }}
@@ -164,7 +172,7 @@ const ContributionGraph: React.FC<ContributionGraphProps> = ({
           </div>
 
           <div className="flex justify-between text-xs text-gray-500 mt-2">
-            {data.months.map((month) => (
+            {data.months && data.months.map((month) => (
               <div key={month}>{month}</div>
             ))}
           </div>
@@ -193,7 +201,7 @@ const showActivitiesModal = (date: string, activities: any[]) => {
             </div>
             <div class="flex-1">
               <p class="font-medium text-sm">${getActivityText(activity)}</p>
-              <p class="text-xs text-gray-500">${activity.type.replace('_', ' ')}</p>
+              <p class="text-xs text-gray-500">${activity.type ? activity.type.replace('_', ' ') : 'Activity'}</p>
             </div>
             <i class="bx bx-chevron-right text-gray-400"></i>
           </div>

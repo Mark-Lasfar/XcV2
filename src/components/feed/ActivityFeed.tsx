@@ -4,14 +4,16 @@ import { PostCard } from './PostCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useEditMode } from '../../hooks/useEditMode';
 
+// ✅ تغيير من userId إلى nickname
 interface ActivityFeedProps {
-  userId: string;
+  nickname: string;  // ✅ استخدم nickname بدلاً من userId
   isOwner: boolean;
   editMode: boolean;
 }
 
 interface Post {
   id: string;
+  _id?: string;
   content: string;
   images?: { url: string }[];
   likes: any[];
@@ -29,9 +31,10 @@ interface Post {
     sharedAt: string;
   };
   createdAt: string;
+  timestamp?: string;
 }
 
-const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId, isOwner, editMode }) => {
+const ActivityFeed: React.FC<ActivityFeedProps> = ({ nickname, isOwner, editMode }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(true);
@@ -39,20 +42,55 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId, isOwner, editMode }
   const { token } = useAuth();
 
   useEffect(() => {
+    // ✅ إعادة تعيين الحالة عند تغيير النيكネーム
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
     loadPosts();
-  }, [userId]);
+  }, [nickname]);  // ✅ استخدم nickname
 
   const loadPosts = async () => {
     if (!hasMore) return;
     setLoading(true);
     try {
-      const result = await profileService.getInteractions(userId, page);
-      const newPosts = result.data || [];
+      // ✅ استخدم nickname
+      const result = await profileService.getInteractions(nickname, page);
+      
+      // ✅ التعامل مع البيانات بشكل صحيح
+      let newPosts: Post[] = [];
+      
+      if (Array.isArray(result)) {
+        newPosts = result;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        newPosts = result.data;
+      } else if (result && result.posts && Array.isArray(result.posts)) {
+        newPosts = result.posts;
+      } else if (result && Array.isArray(result.items)) {
+        newPosts = result.items;
+      }
+      
+      // ✅ تطبيع البيانات
+      newPosts = newPosts.map(post => ({
+        ...post,
+        id: post.id || post._id || `post-${Date.now()}`,
+        createdAt: post.createdAt || post.timestamp || new Date().toISOString()
+      }));
+      
       setPosts(prev => [...prev, ...newPosts]);
-      setHasMore(result.pagination?.page < result.pagination?.pages);
+      
+      // ✅ التحقق من وجود المزيد من الصفحات
+      if (result && result.pagination) {
+        setHasMore(result.pagination.page < result.pagination.pages);
+      } else if (newPosts.length < 10) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+      
       setPage(prev => prev + 1);
     } catch (error) {
       console.error('Error loading posts:', error);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -60,14 +98,17 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId, isOwner, editMode }
 
   const handleLike = async (postId: string) => {
     // Implement like functionality
+    console.log('Like post:', postId);
   };
 
   const handleComment = async (postId: string, comment: string) => {
     // Implement comment functionality
+    console.log('Comment on post:', postId, comment);
   };
 
   const handleShare = async (postId: string) => {
     // Implement share functionality
+    console.log('Share post:', postId);
   };
 
   if (loading && posts.length === 0) {
@@ -105,24 +146,33 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({ userId, isOwner, editMode }
         )}
       </div>
       <div className="card-content">
-        {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            isOwner={isOwner}
-            editMode={editMode}
-            onLike={handleLike}
-            onComment={handleComment}
-            onShare={handleShare}
-          />
-        ))}
+        <div className="space-y-4">
+          {posts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              isOwner={isOwner}
+              editMode={editMode}
+              onLike={handleLike}
+              onComment={handleComment}
+              onShare={handleShare}
+            />
+          ))}
+        </div>
         {hasMore && (
           <button
             onClick={loadPosts}
             disabled={loading}
-            className="w-full py-3 text-center text-blue-500 hover:text-blue-600 transition"
+            className="w-full mt-4 py-3 text-center text-blue-500 hover:text-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Loading...' : 'Load more posts →'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="loader-spinner w-4 h-4" />
+                Loading...
+              </span>
+            ) : (
+              'Load more posts →'
+            )}
           </button>
         )}
       </div>

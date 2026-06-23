@@ -87,7 +87,7 @@ const AIBot: React.FC<AIBotProps> = ({ nickname, isEnabled, avatar }) => {
               />
               <div>
                 <h3 className="font-semibold">AI Assistant</h3>
-                <p className="text-xs opacity-80">Powered by MGZon AI</p>
+                <p className="text-xs opacity-80">Powered by XCV AI</p>
               </div>
             </div>
             <div className="flex gap-2">

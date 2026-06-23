@@ -657,17 +657,19 @@ const ProfilePage: React.FC = () => {
                   ))}
                 </DragDropContext>
 
+                {/* ✅ تمرير nickname بدلاً من userId */}
                 {(activeTab === 'activity' || !isMobile) && (
                   <ActivityFeed
-                    userId={profile._id}
+                    nickname={profile.nickname || profile.username}
                     isOwner={isOwner}
                     editMode={editMode}
                   />
                 )}
 
+                {/* ✅ تمرير nickname بدلاً من userId */}
                 {(activeTab === 'about' || !isMobile) && (
                   <ContributionGraph
-                    userId={profile._id}
+                    nickname={profile.nickname || profile.username}
                     isOwner={isOwner}
                   />
                 )}

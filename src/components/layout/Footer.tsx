@@ -7,7 +7,7 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ profile }) => {
   const currentYear = new Date().getFullYear();
-  const siteName = 'MGZon';
+  const siteName = 'XCV';
 
   return (
     <footer className="bg-white dark:bg-gray-800 border-t dark:border-gray-700 mt-8">

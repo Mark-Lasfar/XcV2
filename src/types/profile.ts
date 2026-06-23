@@ -150,7 +150,7 @@ export interface AudioSettings {
 
 export interface AISettings {
   enabled: boolean;
-  provider: 'mgzon' | 'custom';
+  provider: 'XCV' | 'custom';
   customApiKey?: string;
   customModel?: string;
   temperature?: number;
