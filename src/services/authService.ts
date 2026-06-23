@@ -1,4 +1,4 @@
-import { api } from './api';
+import { publicApi, api } from './api';
 import {
   LoginCredentials,
   RegisterData,
@@ -10,20 +10,20 @@ import {
 import { User } from '../types/user';
 
 export const authService = {
+  // ✅ Login - يستخدم publicApi (بدون withCredentials) عشان CORS
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post('/api/login', credentials);
-    // ✅ تأكد من أن الاستجابة تحتوي على جميع حقول User
+    const response = await publicApi.post('/api/login', credentials);
     const data = response.data;
     if (data.user) {
-      // تأكد من وجود createdAt و updatedAt
       if (!data.user.createdAt) data.user.createdAt = new Date().toISOString();
       if (!data.user.updatedAt) data.user.updatedAt = new Date().toISOString();
     }
     return data;
   },
 
+  // ✅ Register - يستخدم publicApi (بدون withCredentials) عشان CORS
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post('/api/register', data);
+    const response = await publicApi.post('/api/register', data);
     const result = response.data;
     if (result.user) {
       if (!result.user.createdAt) result.user.createdAt = new Date().toISOString();
@@ -32,6 +32,7 @@ export const authService = {
     return result;
   },
 
+  // ✅ Verify Email - يستخدم api (مع withCredentials)
   async verifyEmail(data: VerifyData): Promise<AuthResponse> {
     const response = await api.post('/api/verify-email', data);
     const result = response.data;
@@ -43,27 +44,33 @@ export const authService = {
     return result;
   },
 
+  // ✅ Resend Verification - يستخدم publicApi
   async resendVerification(email: string): Promise<void> {
-    await api.post('/api/resend-verification', { email });
+    await publicApi.post('/api/resend-verification', { email });
   },
 
+  // ✅ Forgot Password - يستخدم publicApi
   async forgotPassword(data: ForgotPasswordData): Promise<void> {
-    await api.post('/api/forgot-password', data);
+    await publicApi.post('/api/forgot-password', data);
   },
 
+  // ✅ Reset Password - يستخدم publicApi
   async resetPassword(data: ResetPasswordData): Promise<void> {
-    await api.post('/api/reset-password', data);
+    await publicApi.post('/api/reset-password', data);
   },
 
+  // ✅ Logout - يستخدم api (مع withCredentials)
   async logout(): Promise<void> {
     await api.post('/api/logout');
   },
 
+  // ✅ Refresh Token - يستخدم publicApi (بدون withCredentials)
   async refreshToken(refreshToken: string): Promise<{ token: string }> {
-    const response = await api.post('/api/refresh-token', { refreshToken });
+    const response = await publicApi.post('/api/refresh-token', { refreshToken });
     return response.data;
   },
 
+  // ✅ Verify Token - يستخدم api (مع withCredentials)
   async verifyToken(): Promise<{ user: User }> {
     const response = await api.get('/api/verify-token');
     const data = response.data;
@@ -74,3 +81,6 @@ export const authService = {
     return data;
   },
 };
+
+// ✅ Export الـ authService كـ default للتوافق
+export default authService;

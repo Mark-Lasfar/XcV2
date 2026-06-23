@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from '../common/Button';
-import { Github, Twitter, Chrome, Mail, Loader2 } from 'lucide-react';
-// ✅ استيراد showToast كدالة
+import { Github, Twitter, Chrome, Mail, Loader2, Facebook } from 'lucide-react';
 import { showToast } from '../common/Toast';
 import { useNavigate } from 'react-router';
 
@@ -19,6 +18,7 @@ interface SocialProvider {
   bgColor: string;
   hoverColor: string;
   enabled: boolean;
+  authPath: string; // ✅ إضافة مسار المصادقة
 }
 
 export const SocialLogin: React.FC<SocialLoginProps> = ({
@@ -37,6 +37,7 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
       bgColor: 'bg-red-500',
       hoverColor: 'hover:bg-red-600',
       enabled: true,
+      authPath: '/auth/google',
     },
     {
       id: 'github',
@@ -46,6 +47,27 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
       bgColor: 'bg-gray-800',
       hoverColor: 'hover:bg-gray-900',
       enabled: true,
+      authPath: '/auth/github',
+    },
+    {
+      id: 'facebook',
+      name: 'Facebook',
+      icon: <Facebook className="w-5 h-5" />,
+      color: 'text-white',
+      bgColor: 'bg-blue-600',
+      hoverColor: 'hover:bg-blue-700',
+      enabled: true,
+      authPath: '/auth/facebook',
+    },
+    {
+      id: 'mgzon',
+      name: 'MGZon',
+      icon: <img src="https://elasfar.vercel.app/logo.png" className="w-5 h-5" alt="MGZon" />,
+      color: 'text-white',
+      bgColor: 'bg-purple-600',
+      hoverColor: 'hover:bg-purple-700',
+      enabled: true,
+      authPath: '/auth/mgz',
     },
     {
       id: 'twitter',
@@ -55,6 +77,7 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
       bgColor: 'bg-blue-400',
       hoverColor: 'hover:bg-blue-500',
       enabled: false,
+      authPath: '/auth/twitter',
     },
     {
       id: 'email',
@@ -64,12 +87,12 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
       bgColor: 'bg-purple-50 dark:bg-purple-900/20',
       hoverColor: 'hover:bg-purple-100 dark:hover:bg-purple-900/30',
       enabled: true,
+      authPath: '/auth/magic-link',
     },
   ];
 
   const handleSocialLogin = async (provider: SocialProvider) => {
     if (!provider.enabled) {
-      // ✅ showToast كدالة مع نوع warning
       showToast(`${provider.name} login is not available yet`, 'warning');
       return;
     }
@@ -77,49 +100,17 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
     setLoading(provider.id);
 
     try {
-      // For OAuth providers (Google, GitHub, Twitter)
-      if (provider.id !== 'email') {
-        // Redirect to OAuth endpoint
-        const baseUrl = import.meta.env.VITE_API_URL || 'https://mgzon-server.hf.space';
-        const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback`);
-        const successRedirect = encodeURIComponent('/profile/me');
-        
-        window.location.href = `${baseUrl}/api/auth/${provider.id}?redirect_uri=${redirectUri}&success_redirect=${successRedirect}`;
-        return;
-      }
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://mgzon-server.hf.space';
+      const redirectUri = encodeURIComponent(`${window.location.origin}/auth/callback`);
+      const successRedirect = encodeURIComponent('/profile/me');
 
-      // For Email Magic Link
-      const email = prompt('Enter your email address:');
-      if (!email) {
-        setLoading(null);
-        return;
-      }
-
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        // ✅ showToast كدالة مع نوع error
-        showToast('Please enter a valid email address', 'error');
-        setLoading(null);
-        return;
-      }
-
-      // Send magic link
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/magic-link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // ✅ showToast كدالة مع نوع success
-        showToast('Magic link sent to your email!', 'success');
-        if (onSuccess) onSuccess('email', { email });
-      } else {
-        throw new Error(data.error || 'Failed to send magic link');
-      }
+      // ✅ استخدام المسار الصحيح من provider
+      const authUrl = `${baseUrl}${provider.authPath}?redirect_uri=${redirectUri}&success_redirect=${successRedirect}`;
+      
+      console.log('🔐 Redirecting to:', authUrl);
+      window.location.href = authUrl;
+      
     } catch (error: any) {
-      // ✅ showToast كدالة مع نوع error
       showToast(error.message || 'Social login failed', 'error');
       if (onError) onError(error.message);
     } finally {
@@ -176,7 +167,6 @@ export const SocialLogin: React.FC<SocialLoginProps> = ({
         })}
       </div>
 
-      {/* Note about data privacy */}
       <p className="text-xs text-center text-gray-400 dark:text-gray-500">
         By continuing, you agree to our Terms of Service and Privacy Policy
       </p>
@@ -197,6 +187,12 @@ export const OAuthCallback: React.FC = () => {
       const refreshToken = params.get('refreshToken');
       const errorParam = params.get('error');
 
+      console.log('🔐 Callback params:', { 
+        token: !!token, 
+        refreshToken: !!refreshToken, 
+        error: errorParam 
+      });
+
       if (errorParam) {
         setError(decodeURIComponent(errorParam));
         setLoading(false);
@@ -208,7 +204,6 @@ export const OAuthCallback: React.FC = () => {
         if (refreshToken) {
           localStorage.setItem('refreshToken', refreshToken);
         }
-        // ✅ showToast كدالة مع نوع success
         showToast('Login successful!', 'success');
         navigate('/profile/me');
       } else {
