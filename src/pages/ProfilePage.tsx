@@ -191,6 +191,7 @@ const ProfilePage: React.FC = () => {
                 onTitleChange: (title: string) => handleUpdate({ name: title }),
               };
 
+              // ✅ استخدام البيانات من profile أو من section.content
               const sectionData = {
                 about: {
                   bio: section.content?.text || profile?.bio || '',
@@ -334,10 +335,29 @@ const ProfilePage: React.FC = () => {
           const result = await fetchProfile(targetNickname);
           if (result) {
             setIsProfileLoaded(true);
+            
+            // ✅ تطبيع الأقسام إذا كانت موجودة
             if (result.sections && result.sections.length > 0) {
               const normalizedSections = normalizeSections(result.sections);
               setSections(normalizedSections);
+            } else {
+              // ✅ إذا لم توجد أقسام، استخدم الأقسام الافتراضية من profile
+              const defaultSections = createDefaultSections(result);
+              setSections(defaultSections);
             }
+            
+            // ✅ تسجيل البيانات للتصحيح
+            console.log('✅ Profile loaded:', {
+              nickname: result.nickname,
+              skills: result.skills?.length || 0,
+              experience: result.experience?.length || 0,
+              education: result.education?.length || 0,
+              certificates: result.certificates?.length || 0,
+              projects: result.projects?.length || 0,
+              interests: result.interests?.length || 0,
+              sections: result.sections?.length || 0,
+            });
+
             if (nickname !== targetNickname && nickname !== 'me') {
               navigate(`/profile/${encodeURIComponent(targetNickname)}`, { replace: true });
             }
@@ -365,7 +385,114 @@ const ProfilePage: React.FC = () => {
     setSections,
   ]);
 
-  // 5.2 Socket Connection
+  // ✅ دالة لإنشاء أقسام افتراضية من بيانات البروفايل
+  const createDefaultSections = useCallback((profileData: any): Section[] => {
+    const sections: Section[] = [];
+
+    // About
+    sections.push({
+      id: 'about',
+      type: 'about',
+      name: 'About',
+      column: 'main',
+      order: 0,
+      visible: true,
+      content: { text: profileData.bio || 'No about information provided.' }
+    });
+
+    // Skills
+    if (profileData.skills && profileData.skills.length > 0) {
+      sections.push({
+        id: 'skills',
+        type: 'skills',
+        name: 'Skills & Expertise',
+        column: 'left',
+        order: 0,
+        visible: true,
+        content: { items: profileData.skills }
+      });
+    }
+
+    // Experience
+    if (profileData.experience && profileData.experience.length > 0) {
+      sections.push({
+        id: 'experience',
+        type: 'experience',
+        name: 'Experience',
+        column: 'main',
+        order: 1,
+        visible: true,
+        content: { items: profileData.experience }
+      });
+    }
+
+    // Education
+    if (profileData.education && profileData.education.length > 0) {
+      sections.push({
+        id: 'education',
+        type: 'education',
+        name: 'Education',
+        column: 'main',
+        order: 2,
+        visible: true,
+        content: { items: profileData.education }
+      });
+    }
+
+    // Certificates
+    if (profileData.certificates && profileData.certificates.length > 0) {
+      sections.push({
+        id: 'certificates',
+        type: 'certificates',
+        name: 'Licenses & Certificates',
+        column: 'right',
+        order: 0,
+        visible: true,
+        content: { items: profileData.certificates }
+      });
+    }
+
+    // Projects
+    if (profileData.projects && profileData.projects.length > 0) {
+      sections.push({
+        id: 'projects',
+        type: 'projects',
+        name: 'Projects',
+        column: 'main',
+        order: 3,
+        visible: true,
+        content: { items: profileData.projects }
+      });
+    }
+
+    // Interests
+    if (profileData.interests && profileData.interests.length > 0) {
+      sections.push({
+        id: 'interests',
+        type: 'interests',
+        name: 'Interests',
+        column: 'right',
+        order: 1,
+        visible: true,
+        content: { items: profileData.interests }
+      });
+    }
+
+    return sections;
+  }, []);
+
+  // ✅ 5.2 تحديث الأقسام عند تغيير profile (لضمان عرض البيانات)
+  useEffect(() => {
+    if (profile && isProfileLoaded) {
+      // إذا كانت الأقسام فارغة ولكن profile يحتوي على بيانات، قم بإنشاء أقسام افتراضية
+      if (sections.length === 0) {
+        const defaultSections = createDefaultSections(profile);
+        setSections(defaultSections);
+      }
+    }
+  }, [profile, isProfileLoaded, sections.length, createDefaultSections, setSections]);
+
+  // 5.3 Socket Connection
   useEffect(() => {
     if (socket && isConnected && profile) {
       const profileId = profile.id || profile._id;
@@ -392,7 +519,7 @@ const ProfilePage: React.FC = () => {
     }
   }, [socket, isConnected, profile, fetchProfile, loadNotifications]);
 
-  // 5.3 Keyboard Shortcuts
+  // 5.4 Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl+E to toggle edit mode
