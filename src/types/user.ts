@@ -3,6 +3,10 @@ export interface User {
   id?: string;
   username: string;
   email: string;
+  nickname?: string;
+  avatar?: string;
+  jobTitle?: string;
+  bio?: string;
   profile?: {
     nickname?: string;
     avatar?: string;

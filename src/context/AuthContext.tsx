@@ -29,15 +29,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // ✅ دالة مساعدة لتحويل بيانات المستخدم
   const normalizeUser = (userData: any): User => {
     const id = userData._id || userData.id || '';
-    if (!id) {
-      console.warn('User ID is missing, using fallback');
-    }
     
     return {
       _id: id,
       id: id,
       username: userData.username || '',
       email: userData.email || '',
+      nickname: userData.nickname || userData.profile?.nickname || userData.username,
+      avatar: userData.avatar || userData.profile?.avatar || '',
+      jobTitle: userData.jobTitle || userData.profile?.jobTitle || '',
+      bio: userData.bio || userData.profile?.bio || '',
       profile: userData.profile || {},
       isAdmin: userData.isAdmin || false,
       createdAt: userData.createdAt || new Date().toISOString(),
@@ -76,19 +77,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const response: AuthResponse = await authService.login({ email, password });
+      const response = await authService.login({ email, password });
       
-      if (response.token && response.user) {
-        const userData = normalizeUser(response.user);
-        
+      // ✅ التحقق من وجود token
+      if (response.token) {
+        // ✅ حفظ التوكن
         localStorage.setItem('userToken', response.token);
-        localStorage.setItem('refreshToken', response.refreshToken);
+        if (response.refreshToken) {
+          localStorage.setItem('refreshToken', response.refreshToken);
+        }
         setToken(response.token);
-        setUser(userData);
+        
+        // ✅ جلب بيانات المستخدم
+        try {
+          const userResponse = await authService.verifyToken();
+          if (userResponse.user) {
+            const userData = normalizeUser(userResponse.user);
+            setUser(userData);
+          }
+        } catch (userError) {
+          console.error('Error fetching user after login:', userError);
+        }
+        
         return { success: true, requiresVerification: false };
       }
       
-      return { success: false, requiresVerification: response.requiresVerification };
+      return { success: false, requiresVerification: response.requiresVerification || false };
     } catch (error: any) {
       if (error.response?.status === 403 && error.response?.data?.requiresVerification) {
         return { success: false, requiresVerification: true };
@@ -99,19 +113,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: RegisterData) => {
     try {
-      const response: AuthResponse = await authService.register(data);
+      const response = await authService.register(data);
       
-      if (response.token && response.user) {
-        const userData = normalizeUser(response.user);
-        
+      if (response.token) {
         localStorage.setItem('userToken', response.token);
-        localStorage.setItem('refreshToken', response.refreshToken);
+        if (response.refreshToken) {
+          localStorage.setItem('refreshToken', response.refreshToken);
+        }
         setToken(response.token);
-        setUser(userData);
+        
+        if (response.user) {
+          const userData = normalizeUser(response.user);
+          setUser(userData);
+        }
+        
         return { success: true, requiresVerification: false };
       }
       
-      return { success: true, requiresVerification: response.requiresVerification };
+      return { success: true, requiresVerification: response.requiresVerification || false };
     } catch (error: any) {
       if (error.response?.status === 201 && error.response?.data?.requiresVerification) {
         return { success: true, requiresVerification: true };
@@ -121,18 +140,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyEmail = async (email: string, otp: string) => {
-    const response: AuthResponse = await authService.verifyEmail({ email, otp });
+    const response = await authService.verifyEmail({ email, otp });
     
-    if (response.token && response.user) {
-      const userData = normalizeUser({
-        ...response.user,
-        isVerified: true,
-      });
-      
+    if (response.token) {
       localStorage.setItem('userToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
       setToken(response.token);
-      setUser(userData);
+      
+      if (response.user) {
+        const userData = normalizeUser({
+          ...response.user,
+          isVerified: true,
+        });
+        setUser(userData);
+      }
     }
     
     return response;
